@@ -2,6 +2,10 @@
 
 Outfit suggestions for your weather, season and local style, plus clothing and accessory shops near you.
 
+**Live app:** https://d4ni4lju.github.io/stylecast/
+
+On iPhone, open it in Safari, then tap Share → Add to Home Screen.
+
 ## Run it
 Location access only works on `https://` or `localhost`, so serve the folder rather than double-clicking the file:
 
