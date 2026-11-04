@@ -4,397 +4,498 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Stylecast</title>
-<meta name="description" content="Outfit suggestions for your weather, season and local style, plus clothing and accessory shops near you.">
-<meta name="theme-color" content="#1d1a2b">
+<meta name="description" content="Outfit suggestions for your weather, season and local style, your own wardrobe, stores near you and an AI stylist.">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b0b0b" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Stylecast">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
-/* Layout: a lookbook. Weather strip on top, three outfit cards as the centrepiece, then local style and a shop map. */
+/* Layout: a mobile app shell. One screen at a time, a five-tab bar at the bottom, centred column on wide screens.
+   Look: monochrome editorial. White space, hairlines, one serif for headlines, colour only from clothes and palettes. */
 :root{
-  --bg:#f3f2f7; --surface:#ffffff; --ink:#1d1a2b; --muted:#615c74; --line:#dedbe8;
-  --accent:#3049e8; --accent-ink:#ffffff; --blush:#f2c6c2; --chip:#e9e7f1;
-  --good:#1f7a4d; --warn:#a15c00;
-  --display:"Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
-  --body:"Figtree", "Segoe UI", system-ui, -apple-system, sans-serif;
-  --mono:"JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
-  --r:14px;
+  --bg:#ffffff; --surface:#ffffff; --soft:#f5f5f4; --ink:#111111; --muted:#7c7c7a; --line:#e9e9e7;
+  --accent:#111111; --accent-ink:#ffffff; --warn:#a8540a; --good:#2f6b46;
+  --serif:"Instrument Serif", "Didot", "Bodoni 72", Georgia, serif;
+  --sans:"Instrument Sans", -apple-system, "Helvetica Neue", "Segoe UI", system-ui, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --tabh:64px; --r:14px;
   color-scheme:light;
 }
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
-  --bg:#13111c; --surface:#1d1a29; --ink:#efedf6; --muted:#a39fb6; --line:#2f2b40;
-  --accent:#7d8dff; --accent-ink:#0f0d18; --blush:#6b3f45; --chip:#29253a;
-  --good:#5fd39a; --warn:#f0b04f; color-scheme:dark;
+  --bg:#0b0b0b; --surface:#141414; --soft:#1b1b1b; --ink:#f2f2f0; --muted:#8e8e8a; --line:#262626;
+  --accent:#f2f2f0; --accent-ink:#0b0b0b; --warn:#f0a75a; --good:#7fc79b; color-scheme:dark;
 }}
 :root[data-theme="dark"]{
-  --bg:#13111c; --surface:#1d1a29; --ink:#efedf6; --muted:#a39fb6; --line:#2f2b40;
-  --accent:#7d8dff; --accent-ink:#0f0d18; --blush:#6b3f45; --chip:#29253a;
-  --good:#5fd39a; --warn:#f0b04f; color-scheme:dark;
+  --bg:#0b0b0b; --surface:#141414; --soft:#1b1b1b; --ink:#f2f2f0; --muted:#8e8e8a; --line:#262626;
+  --accent:#f2f2f0; --accent-ink:#0b0b0b; --warn:#f0a75a; --good:#7fc79b; color-scheme:dark;
 }
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html,body{margin:0}
-body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--body);
-  padding-left:max(16px, env(safe-area-inset-left,0px));padding-right:max(16px, env(safe-area-inset-right,0px));
-  padding-top:env(safe-area-inset-top,0px);padding-bottom:calc(32px + env(safe-area-inset-bottom,0px))}
-.wrap{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
-h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;letter-spacing:-.01em}
-h2{font-size:clamp(22px,3vw,30px);font-weight:800}
-h3{font-size:18px;font-weight:700}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--sans);-webkit-font-smoothing:antialiased;
+  padding-top:env(safe-area-inset-top,0px)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--bg);z-index:900}
+button,select,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer;-webkit-tap-highlight-color:transparent}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+h1,h2,h3{margin:0;font-weight:400;text-wrap:balance}
 p{margin:0}
 .muted{color:var(--muted)}
-.label{font-size:11px;letter-spacing:.09em;text-transform:uppercase;font-weight:700;color:var(--muted)}
-button,select,input{font:inherit;color:inherit}
-button{cursor:pointer}
-:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-a{color:var(--accent)}
+.label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:500;color:var(--muted)}
 
-/* top bar */
-.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-block:18px 0}
-.brand{display:flex;align-items:baseline;gap:10px}
-.brand h1{font-size:28px;font-weight:800}
-.brand h1 span{color:var(--accent)}
-.top-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.btn{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 14px;font-weight:600;display:inline-flex;gap:8px;align-items:center}
-.btn:hover{border-color:var(--accent)}
-.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
-.btn:disabled{opacity:.55;cursor:wait}
-.search{display:flex;gap:6px;position:relative}
-.search input{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 14px;width:min(240px,60vw)}
-.suggest{position:absolute;top:100%;left:0;right:0;margin-top:4px;background:var(--surface);border:1px solid var(--line);border-radius:12px;z-index:1000;overflow:hidden;box-shadow:0 12px 30px rgb(0 0 0 / .15)}
-.suggest button{display:block;width:100%;text-align:left;background:none;border:0;padding:9px 14px}
-.suggest button:hover,.suggest button:focus{background:var(--chip)}
+/* ---------- shell ---------- */
+main{max-width:640px;margin:0 auto;padding-left:max(20px, env(safe-area-inset-left,0px));padding-right:max(20px, env(safe-area-inset-right,0px));
+  padding-block:8px calc(var(--tabh) + 28px + env(safe-area-inset-bottom,0px))}
+.view{display:flex;flex-direction:column;gap:28px;animation:fade .2s ease}
+@keyframes fade{from{opacity:.4}to{opacity:1}}
+.vhead{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding-top:14px}
+.vhead h1{font-family:var(--serif);font-size:40px;line-height:1;letter-spacing:-.01em}
+.vhead .sub{margin-top:6px}
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:1000;background:color-mix(in srgb,var(--bg) 92%,transparent);
+  -webkit-backdrop-filter:saturate(1.4) blur(14px);backdrop-filter:saturate(1.4) blur(14px);border-top:1px solid var(--line);
+  padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+.tabbar nav{max-width:640px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr);height:var(--tabh)}
+.tab{background:none;border:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:10.5px;letter-spacing:.04em;color:var(--muted);padding:0}
+.tab svg{width:23px;height:23px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.tab[aria-current="page"]{color:var(--ink)}
+.tab[aria-current="page"] svg{stroke-width:1.9}
 
-/* hero weather */
-.hero{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:20px;background:var(--ink);color:var(--bg);border-radius:22px;padding:24px;position:relative;overflow:hidden}
-.hero::after{content:"";position:absolute;right:-60px;top:-60px;width:240px;height:240px;border-radius:50%;background:var(--blush);opacity:.35;pointer-events:none}
-.hero .label{color:color-mix(in srgb,var(--bg) 65%,transparent)}
-.place{font-family:var(--display);font-size:clamp(30px,5vw,52px);font-weight:800;line-height:1.02}
-.temp{font-family:var(--display);font-size:clamp(56px,9vw,96px);font-weight:800;line-height:.9;font-variant-numeric:tabular-nums}
-.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
-.pill{border-radius:999px;padding:4px 11px;font-size:13px;font-weight:600;background:color-mix(in srgb,var(--bg) 14%,transparent);color:var(--bg)}
-.pill.season{background:var(--blush);color:#1d1a2b}
-.hero-right{display:flex;flex-direction:column;gap:10px;justify-content:space-between;z-index:1}
-.verdict{font-size:18px;font-weight:600;line-height:1.35}
-.week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
-.day{text-align:center;font-size:12px;padding:8px 2px;border-radius:10px;background:color-mix(in srgb,var(--bg) 9%,transparent)}
-.day b{display:block;font-size:14px;font-variant-numeric:tabular-nums}
-.day i{font-style:normal;display:block;opacity:.75;font-size:11px;margin-top:2px;line-height:1.2}
-.example{font-size:12px;font-weight:700;background:var(--warn);color:var(--bg);border-radius:6px;padding:2px 8px;align-self:flex-start}
-
-/* controls */
-.controls{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
-.ctrl{display:flex;flex-direction:column;gap:8px;min-width:0}
-.seg{display:flex;flex-wrap:wrap;gap:6px}
-.seg button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;font-size:14px;font-weight:500}
+/* ---------- controls ---------- */
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:9px 16px;font-weight:500;font-size:14px;display:inline-flex;gap:7px;align-items:center;justify-content:center;white-space:nowrap;text-decoration:none;color:var(--ink)}
+.btn:hover{border-color:var(--ink)}
+.btn.primary{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.btn.ghost{border-color:transparent;background:none;padding-inline:8px}
+.btn.icon{width:40px;height:40px;padding:0;border-radius:50%}
+.btn:disabled{opacity:.45;cursor:default}
+.seg{display:flex;flex-wrap:wrap;gap:8px}
+.seg.scroll{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-inline:-20px;padding-inline:20px;scroll-padding-inline:20px}
+.seg.scroll::-webkit-scrollbar{display:none}
+.seg button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 14px;font-size:14px;white-space:nowrap;flex:none}
 .seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
-
-/* looks */
-.section-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
-.looks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
-.look{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;display:flex;flex-direction:column;gap:14px;min-width:0}
-.look-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
-.look-num{font-family:var(--mono);font-size:12px;color:var(--muted)}
-.swatches{display:flex;gap:6px}
-.sw{width:30px;height:30px;border-radius:50%;border:1px solid var(--line)}
-.slots{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px}
-.slots li{display:grid;grid-template-columns:86px minmax(0,1fr);gap:8px;align-items:center}
-.slots li .label{font-size:10px}
-.tip{font-size:13.5px;color:var(--muted);border-top:1px dashed var(--line);padding-top:12px}
-.look-foot{display:flex;gap:8px;margin-top:auto;flex-wrap:wrap}
-.look-foot .btn{padding:6px 12px;font-size:13px}
-.tag{display:inline-block;align-self:flex-start;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:var(--chip);border-radius:6px;padding:2px 7px;color:var(--muted)}
-.tag.trad{background:var(--blush);color:var(--ink)}
-
-/* local + palette */
-.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
-.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:20px;display:flex;flex-direction:column;gap:12px;min-width:0}
-.panel ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
-.palette{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:10px}
-.pal{display:flex;flex-direction:column;gap:4px;font-size:12px}
-.pal div{height:52px;border-radius:10px;border:1px solid var(--line)}
-.pal code{font-family:var(--mono);font-size:11px;color:var(--muted)}
-
-/* shops */
-.shop-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-.shop-bar select{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 10px}
-.shops{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:16px;align-items:start}
-#map{height:460px;border-radius:var(--r);border:1px solid var(--line);background:var(--chip);z-index:0}
-.shop-list{display:flex;flex-direction:column;gap:8px;max-height:460px;overflow:auto;padding-right:4px}
-.shop{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;cursor:pointer;text-align:left}
-.shop:hover,.shop.active{border-color:var(--accent)}
-.shop h4{margin:0;font-size:15px;font-weight:700;overflow-wrap:anywhere}
-.shop .dist{font-family:var(--mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
-.shop .meta{grid-column:1/-1;font-size:13px;color:var(--muted);overflow-wrap:anywhere}
-.shop .links{grid-column:1/-1;display:flex;gap:12px;font-size:13px;font-weight:600;flex-wrap:wrap}
-.empty{border:1px dashed var(--line);border-radius:12px;padding:18px;color:var(--muted);text-align:center}
+.switch{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--soft);border-radius:999px;padding:3px}
+.switch button{border:0;background:none;border-radius:999px;padding:8px 10px;font-size:14px;font-weight:500;color:var(--muted)}
+.switch button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgb(0 0 0 / .12)}
+.field{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:11px 14px;width:100%;min-width:0}
+select.field{appearance:none;-webkit-appearance:none;padding-right:30px;background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);background-position:calc(100% - 16px) 52%,calc(100% - 11px) 52%;background-size:5px 5px;background-repeat:no-repeat}
+.linkbtn{background:none;border:0;padding:0;color:var(--ink);font-weight:500;text-decoration:underline;text-underline-offset:3px}
 .status{font-size:13px;color:var(--muted)}
 .status.err{color:var(--warn)}
-.brandbox{gap:14px}
-.brandbox .search input{width:min(320px,100%)}
-.shop .links a.stock{background:var(--accent);color:var(--accent-ink);text-decoration:none;border-radius:999px;padding:1px 10px}
-.linkbtn{background:none;border:0;padding:0;color:var(--accent);font-weight:600;text-decoration:underline}
-.saved{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
-.saved .look{padding:14px;gap:10px}
-footer{font-size:12.5px;color:var(--muted);border-top:1px solid var(--line);padding-top:14px}
-.ward-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
-.ward-empty{grid-column:1/-1;text-align:left;line-height:1.6}
-.witem{display:flex;flex-direction:column;gap:3px;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:8px;min-width:0}
-.witem:hover{border-color:var(--accent)}
-.witem img{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:8px;background:var(--chip);margin-bottom:4px}
-.wname{font-weight:600;font-size:14px;display:flex;gap:6px;align-items:center;overflow-wrap:anywhere}
-.wmeta{font-size:12px;color:var(--muted)}
-.dot{width:12px;height:12px;border-radius:50%;flex:none;border:1px solid var(--line)}
-.slot-v{display:flex;gap:10px;align-items:center;min-width:0}
+.empty{border:1px dashed var(--line);border-radius:var(--r);padding:22px;color:var(--muted);text-align:center;font-size:14px;line-height:1.6}
+.tag{display:inline-block;align-self:flex-start;font-size:10.5px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--line);border-radius:999px;padding:2px 8px;color:var(--muted)}
+.tag.trad,.tag.ward{border-color:var(--ink);color:var(--ink)}
+.row{display:flex;align-items:center;gap:10px}
+.between{display:flex;align-items:center;justify-content:space-between;gap:12px}
+
+/* ---------- today ---------- */
+.place-btn{display:inline-flex;align-items:center;gap:6px;border:0;background:none;padding:0;font-size:14px;font-weight:500}
+.place-btn svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.6}
+.example{font-size:12px;color:var(--warn)}
+.weather{display:flex;flex-direction:column;gap:14px}
+.temp-row{display:flex;align-items:flex-end;gap:16px}
+.temp{font-family:var(--serif);font-size:88px;line-height:.85;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.cond{display:flex;flex-direction:column;gap:2px;padding-bottom:6px}
+.cond b{font-weight:500;font-size:16px}
+.verdict{font-size:15px;color:var(--muted);max-width:52ch}
+.hero-meta{display:flex;flex-wrap:wrap;gap:6px}
+.pill{font-size:12.5px;border:1px solid var(--line);border-radius:999px;padding:3px 10px;color:var(--muted)}
+.pill.season{border-color:var(--ink);color:var(--ink)}
+.week{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(64px,1fr);overflow-x:auto;scrollbar-width:none;margin-inline:-20px;padding-inline:20px;border-block:1px solid var(--line)}
+.week::-webkit-scrollbar{display:none}
+.day{text-align:center;font-size:11.5px;padding:12px 4px;color:var(--muted);display:flex;flex-direction:column;gap:2px}
+.day b{font-size:15px;font-weight:500;color:var(--ink);font-variant-numeric:tabular-nums}
+.day i{font-style:normal;font-size:10.5px;letter-spacing:.02em}
+.block{display:flex;flex-direction:column;gap:12px}
+.block-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.block-head h2{font-family:var(--serif);font-size:26px;line-height:1.1}
+
+/* outfit carousel */
+.looks{display:grid;grid-auto-flow:column;grid-auto-columns:100%;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain}
+.looks::-webkit-scrollbar{display:none}
+.looks > .look{scroll-snap-align:start}
+.dots{display:flex;gap:6px;justify-content:center}
+.dots button{width:6px;height:6px;border-radius:50%;border:0;padding:0;background:var(--line)}
+.dots button[aria-current="true"]{background:var(--ink);width:18px;border-radius:3px}
+.look{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:22px;display:flex;flex-direction:column;gap:18px;min-width:0}
+.look-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.look-head h3{font-family:var(--serif);font-size:30px;line-height:1}
+.look-head > div:first-child{display:flex;flex-direction:column;gap:6px}
+.look-num{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.swatches{display:flex}
+.sw{width:26px;height:26px;border-radius:50%;border:2px solid var(--surface);box-shadow:0 0 0 1px var(--line);margin-left:-6px}
+.slots{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.slots li{display:grid;grid-template-columns:92px minmax(0,1fr);gap:10px;align-items:center;padding:11px 0;border-top:1px solid var(--line)}
+.slots li:last-child{border-bottom:1px solid var(--line)}
+.slots .label{font-size:10.5px}
+.slot-v{display:flex;gap:12px;align-items:center;min-width:0}
 .slot-v.miss{color:var(--muted);font-style:italic}
-.thumb{width:44px;height:52px;object-fit:cover;border-radius:6px;flex:none;border:1px solid var(--line)}
-.tag.ward{background:var(--accent);color:var(--accent-ink)}
-dialog{border:1px solid var(--line);border-radius:18px;padding:0;background:var(--surface);color:var(--ink);width:min(760px,calc(100vw - 32px));max-height:calc(100vh - 32px)}
-dialog::backdrop{background:rgb(10 8 20 / .55)}
-.dlg{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);margin:0}
-.dlg-img{background:var(--chip);display:flex;align-items:center;justify-content:center;min-height:240px}
-.dlg-img img{width:100%;height:100%;max-height:70vh;object-fit:contain}
-.dlg-fields{padding:20px;display:flex;flex-direction:column;gap:8px;min-width:0}
-.dlg-fields input[type=text]{border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:9px 12px}
-.colorrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.colorrow input{width:44px;height:34px;border:1px solid var(--line);border-radius:8px;background:none;padding:2px}
-.dlg-foot{display:flex;gap:8px;justify-content:flex-end;align-items:center;flex-wrap:wrap;margin-top:8px}
-.dlg-foot #dlgCount{margin-right:auto;font-size:13px}
-@media (max-width:640px){ .dlg{grid-template-columns:minmax(0,1fr)} .dlg-img{min-height:0;max-height:34vh} .dlg-img img{max-height:34vh} }
-.chat{gap:14px}
-.chat-log{display:flex;flex-direction:column;gap:10px;max-height:480px;min-height:120px;overflow-y:auto;padding:4px 2px}
-.bubble{max-width:min(620px,88%);padding:10px 14px;border-radius:16px;display:flex;flex-direction:column;gap:6px;overflow-wrap:anywhere}
-.bubble p{margin:0}
-.bubble ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:3px}
-.bubble.ai{background:var(--chip);align-self:flex-start;border-bottom-left-radius:4px}
-.bubble.me{background:var(--accent);color:var(--accent-ink);align-self:flex-end;border-bottom-right-radius:4px}
-.bubble.me img{max-width:160px;max-height:160px;object-fit:cover;border-radius:10px}
-.err-text{color:var(--warn);font-weight:600}
+.thumb{width:44px;height:54px;object-fit:cover;border-radius:8px;flex:none;background:var(--soft)}
+.tip{font-size:13.5px;color:var(--muted);line-height:1.55}
+.tip b{color:var(--ink);font-weight:500}
+.tip a{color:var(--ink)}
+.look-foot{display:flex;gap:8px;flex-wrap:wrap}
+.look-foot .btn{padding:8px 14px;font-size:13.5px}
+details.note{border-top:1px solid var(--line)}
+details.note:last-of-type{border-bottom:1px solid var(--line)}
+details.note summary{list-style:none;display:flex;justify-content:space-between;align-items:center;padding:16px 0;cursor:pointer;font-weight:500}
+details.note summary::-webkit-details-marker{display:none}
+details.note summary::after{content:"+";font-size:20px;font-weight:300;color:var(--muted)}
+details.note[open] summary::after{content:"–"}
+.note-body{padding-bottom:18px;display:flex;flex-direction:column;gap:12px;font-size:14.5px}
+.note-body ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:8px}
+.palette{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
+.pal{display:flex;flex-direction:column;gap:5px;font-size:11px;min-width:0}
+.pal div{aspect-ratio:1;border-radius:50%;box-shadow:inset 0 0 0 1px rgb(0 0 0 / .08)}
+.pal b{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pal code{display:none}
+
+/* ---------- wardrobe ---------- */
+.ward-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 12px}
+.ward-empty{grid-column:1/-1;text-align:left}
+.witem{display:flex;flex-direction:column;gap:3px;text-align:left;background:none;border:0;padding:0;min-width:0}
+.witem img{width:100%;aspect-ratio:4/5;object-fit:cover;border-radius:12px;background:var(--soft);margin-bottom:6px}
+.wname{font-weight:500;font-size:14px;display:flex;gap:7px;align-items:center;overflow-wrap:anywhere}
+.wmeta{font-size:12px;color:var(--muted)}
+.dot{width:10px;height:10px;border-radius:50%;flex:none;box-shadow:0 0 0 1px var(--line)}
+.gap-note{background:var(--soft);border-radius:var(--r);padding:14px 16px;font-size:14px;color:var(--muted)}
+.gap-note b{color:var(--ink);font-weight:500}
+
+/* ---------- shop ---------- */
+.shop-tools{display:flex;flex-direction:column;gap:14px}
+.inline{display:flex;gap:8px}
+.inline .field{flex:1}
+.shops{display:flex;flex-direction:column;gap:12px}
+#map{height:min(62vh,520px);border-radius:var(--r);background:var(--soft);z-index:0}
+.shops[data-show="list"] #map{display:none}
+.shops[data-show="map"] .shop-list{display:none}
+.shop-list{display:flex;flex-direction:column}
+.shop{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 12px;padding:16px 0;border-bottom:1px solid var(--line);cursor:pointer;text-align:left}
+.shop:first-child{border-top:1px solid var(--line)}
+.shop h4{margin:0;font-size:15px;font-weight:500;overflow-wrap:anywhere}
+.shop .dist{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.shop .meta{grid-column:1/-1;font-size:13px;color:var(--muted);overflow-wrap:anywhere;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.shop .links{grid-column:1/-1;display:flex;gap:16px;font-size:13.5px;font-weight:500;flex-wrap:wrap;margin-top:6px;align-items:center}
+.shop .links a{text-decoration:underline;text-underline-offset:3px}
+.shop .links a.stock{text-decoration:none;background:var(--ink);color:var(--bg);border-radius:999px;padding:3px 12px}
+.shop.active h4{text-decoration:underline}
+
+/* ---------- stylist ---------- */
+#view-stylist{gap:16px}
+.chat-log{display:flex;flex-direction:column;gap:12px;min-height:30vh}
+.bubble{max-width:86%;padding:11px 15px;border-radius:18px;display:flex;flex-direction:column;gap:7px;overflow-wrap:anywhere;font-size:15px}
+.bubble ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
+.bubble strong{font-weight:600}
+.bubble.ai{background:var(--soft);align-self:flex-start;border-bottom-left-radius:6px}
+.bubble.me{background:var(--ink);color:var(--bg);align-self:flex-end;border-bottom-right-radius:6px}
+.bubble.me img{max-width:160px;max-height:160px;object-fit:cover;border-radius:12px}
+.err-text{color:var(--warn);font-weight:500}
 .typing span{animation:blink 1.2s infinite both}.typing span:nth-child(2){animation-delay:.2s}.typing span:nth-child(3){animation-delay:.4s}
 @keyframes blink{0%,80%,100%{opacity:.2}40%{opacity:1}}
-.chat-form{display:flex;gap:8px;align-items:flex-end}
-.chat-form textarea{flex:1;min-width:0;resize:vertical;min-height:42px;max-height:160px;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:14px;padding:10px 14px;font:inherit}
-.keybox{border:1px dashed var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.composer{position:sticky;bottom:calc(var(--tabh) + env(safe-area-inset-bottom,0px) + 8px);background:var(--bg);display:flex;flex-direction:column;gap:10px;padding-top:8px}
+.chat-form{display:flex;gap:8px;align-items:flex-end;border:1px solid var(--line);border-radius:24px;padding:5px;background:var(--surface)}
+.chat-form textarea{flex:1;min-width:0;resize:none;min-height:38px;max-height:140px;border:0;background:none;padding:8px 6px;outline:none}
+.chat-form .btn{height:38px}
+.chat-form label.btn{width:38px;padding:0;border:0;background:var(--soft)}
+.keybox{border:1px solid var(--line);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:12px;font-size:14px}
 .keyform{display:flex;gap:8px;flex-wrap:wrap}
-.keyform input{flex:1;min-width:0;width:200px;border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:8px 12px;font-family:var(--mono);font-size:13px}
+.keyform input{flex:1 1 200px;min-width:0;font-family:var(--mono);font-size:13px}
 .attach{display:flex;gap:10px;align-items:center}
-.attach img{height:64px;border-radius:8px;border:1px solid var(--line)}
-#chatChips button:disabled{opacity:.5}
-.ask-fab{position:fixed;right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:1500;box-shadow:0 8px 24px rgb(0 0 0 / .2);text-decoration:none}
-.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-weight:600;z-index:2000;opacity:0;transition:opacity .2s}
-.toast.show{opacity:1}
+.attach img{height:56px;border-radius:8px}
+#chatChips button:disabled{opacity:.45}
 
-@media (max-width:900px){
-  .looks{grid-template-columns:minmax(0,1fr)}
-  .controls{grid-template-columns:minmax(0,1fr)}
-  .two,.shops,.hero{grid-template-columns:minmax(0,1fr)}
-  #map{height:320px}
+/* ---------- me ---------- */
+.list{display:flex;flex-direction:column}
+.list > *{border-top:1px solid var(--line);padding:16px 0}
+.list > *:last-child{border-bottom:1px solid var(--line)}
+.list .label{display:block;margin-bottom:10px}
+.saved{display:grid;gap:12px}
+.saved .look{padding:18px;gap:12px}
+.saved .look-head h3{font-size:22px}
+footer{font-size:12px;color:var(--muted);line-height:1.6}
+
+/* ---------- sheets (dialogs) ---------- */
+dialog{border:0;padding:0;background:var(--surface);color:var(--ink);width:min(560px,100vw);max-width:100vw;max-height:92vh;border-radius:22px;box-shadow:0 20px 60px rgb(0 0 0 / .25)}
+dialog::backdrop{background:rgb(0 0 0 / .4)}
+@media (max-width:640px){
+  dialog{margin:auto 0 0;width:100vw;border-radius:22px 22px 0 0;max-height:94vh;padding-bottom:env(safe-area-inset-bottom,0px)}
 }
+.sheet{padding:22px 20px;display:flex;flex-direction:column;gap:14px}
+.sheet h3{font-family:var(--serif);font-size:28px}
+.grab{width:36px;height:4px;border-radius:2px;background:var(--line);margin:0 auto -4px}
+.suggest{display:flex;flex-direction:column}
+.suggest button{display:block;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line);padding:13px 2px}
+.dlg{display:flex;flex-direction:column;margin:0;max-height:92vh;overflow:auto}
+.dlg-img{background:var(--soft);display:flex;justify-content:center}
+.dlg-img img{width:100%;max-height:34vh;object-fit:contain}
+.dlg-fields{padding:18px 20px 20px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.dlg-fields h3{font-family:var(--serif);font-size:26px}
+.colorrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.colorrow input{width:40px;height:32px;border:1px solid var(--line);border-radius:8px;background:none;padding:2px}
+.dlg-foot{display:flex;gap:8px;justify-content:flex-end;align-items:center;flex-wrap:wrap;margin-top:8px}
+.dlg-foot #dlgCount{margin-right:auto;font-size:13px}
+
+.toast{position:fixed;left:50%;bottom:calc(var(--tabh) + 16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-size:14px;font-weight:500;z-index:2000;opacity:0;transition:opacity .2s;pointer-events:none;max-width:calc(100vw - 32px);text-align:center}
+.toast.show{opacity:1}
+.leaflet-container{font-family:var(--sans)}
+
+@media (min-width:900px){ main{max-width:720px} .ward-grid{grid-template-columns:repeat(3,minmax(0,1fr))} }
 @media (max-width:640px){ input,select,textarea{font-size:16px!important} }
-@media (max-width:420px){ .week{grid-template-columns:repeat(4,minmax(0,1fr))} .slots li{grid-template-columns:72px minmax(0,1fr)} }
+@media (max-width:380px){ .temp{font-size:72px} .slots li{grid-template-columns:76px minmax(0,1fr)} }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
 <body>
-<div class="wrap">
+<main>
 
-  <header class="top">
-    <div class="brand"><h1>Style<span>cast</span></h1><span class="muted">dress for where you are</span></div>
-    <div class="top-actions">
-      <button class="btn primary" id="locBtn" type="button">◎ Use my location</button>
-      <form class="search" id="searchForm" autocomplete="off">
-        <input id="cityInput" type="search" placeholder="Or search a city…" aria-label="Search a city">
-        <div class="suggest" id="suggest" hidden></div>
-      </form>
-      <button class="btn" id="unitBtn" type="button" aria-label="Switch temperature unit">°C</button>
-    </div>
-  </header>
-
-  <section class="hero" aria-live="polite">
-    <div style="display:flex;flex-direction:column;gap:6px;z-index:1;min-width:0">
-      <span class="example" id="exampleTag" hidden>Example city · tap “Use my location”</span>
-      <span class="label" id="todayLabel">Today</span>
-      <div class="place" id="placeName">Finding you…</div>
-      <div style="display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap">
-        <div class="temp" id="tempNow">--°</div>
-        <div class="muted" id="feels" style="color:inherit;opacity:.8;padding-bottom:8px"></div>
-      </div>
-      <div class="hero-meta" id="heroMeta"></div>
-    </div>
-    <div class="hero-right">
-      <p class="verdict" id="verdict">Loading the weather to pick your outfits.</p>
+  <!-- ============ TODAY ============ -->
+  <section class="view" id="view-today" aria-label="Today">
+    <div class="vhead">
       <div>
-        <div class="label" style="margin-bottom:6px">Next 7 days</div>
-        <div class="week" id="week"></div>
+        <div class="label" id="todayLabel">Today</div>
+        <h1>Today</h1>
       </div>
+      <button class="place-btn" type="button" id="placeBtn" aria-label="Change location">
+        <svg viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-12a7 7 0 0 1 14 0c0 5.8-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/></svg>
+        <span id="placeName">Finding you…</span>
+      </button>
     </div>
-  </section>
+    <p class="example" id="exampleTag" hidden>Showing an example city. Tap the location above to use yours.</p>
 
-  <section class="controls" aria-label="Your preferences">
-    <div class="ctrl"><span class="label">I wear</span><div class="seg" data-key="wear"></div></div>
-    <div class="ctrl"><span class="label">Occasion</span><div class="seg" data-key="occasion"></div></div>
-    <div class="ctrl"><span class="label">Vibe</span><div class="seg" data-key="vibe"></div></div>
-  </section>
-
-  <section style="display:flex;flex-direction:column;gap:14px">
-    <div class="section-head">
-      <div><span class="label">Your looks for today</span><h2 id="looksTitle">Three ways to dress</h2></div>
-      <button class="btn" id="shuffleBtn" type="button">↻ Shuffle looks</button>
-    </div>
-    <div class="looks" id="looks"></div>
-  </section>
-
-  <section class="chat panel" id="stylist" aria-labelledby="chatTitle">
-    <div class="section-head" style="align-items:center">
-      <div><span class="label">Powered by Claude</span><h2 id="chatTitle">Ask your stylist</h2></div>
-      <div class="shop-bar">
-        <span class="status" id="chatKeyState"></span>
-        <button class="btn" type="button" id="keyToggle" aria-label="API key settings">⚿ Key</button>
-        <button class="btn" type="button" id="chatClear" hidden>New chat</button>
+    <div class="weather" aria-live="polite">
+      <div class="temp-row">
+        <div class="temp" id="tempNow">--°</div>
+        <div class="cond"><b id="condNow"></b><span class="muted" id="feels"></span></div>
       </div>
+      <p class="verdict" id="verdict">Loading the weather to pick your outfits.</p>
+      <div class="hero-meta" id="heroMeta"></div>
+      <div class="week" id="week"></div>
     </div>
-    <div class="keybox" id="chatKeyBox" hidden>
-      <p><b>Connect your Anthropic API key.</b> The stylist runs on Claude using your own key, so you pay Anthropic directly for what you use (usually around a cent or two per message). Create a key at <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a> and set a monthly spend limit there.</p>
-      <form class="keyform" id="keyForm" autocomplete="off">
-        <input id="apiKey" type="password" placeholder="sk-ant-..." aria-label="Anthropic API key" spellcheck="false">
-        <button class="btn" type="button" id="keyShow">Show</button>
-        <button class="btn primary" type="submit">Save key</button>
-        <button class="btn" type="button" id="keyRemove">Remove key</button>
-      </form>
-      <p class="muted" style="font-size:13px">The key is stored only in this browser and sent only to Anthropic. Don't save it on a shared computer.</p>
+
+    <div class="block">
+      <span class="label">Dressing for</span>
+      <div class="seg scroll" data-key="occasion"></div>
     </div>
-    <div class="chat-log" id="chatLog" aria-live="polite"></div>
-    <p class="status" id="chatLong" hidden>This chat is getting long. Tap “New chat” for faster, cheaper replies.</p>
-    <div class="seg" id="chatChips" aria-label="Suggested questions">
-      <button type="button">What should I wear today?</button>
-      <button type="button">Style one of my pieces three ways</button>
-      <button type="button">What's missing from my wardrobe this season?</button>
-      <button type="button">Help me pack for a 3-day trip</button>
-      <button type="button">What should I wear to a wedding here?</button>
-      <button type="button" data-photo="1">📷 Rate my outfit</button>
+
+    <div class="block">
+      <div class="block-head">
+        <h2 id="looksTitle">Your looks</h2>
+        <button class="btn ghost" id="shuffleBtn" type="button" aria-label="Show new looks">↻ Shuffle</button>
+      </div>
+      <div class="looks" id="looks" aria-roledescription="carousel"></div>
+      <div class="dots" id="lookDots"></div>
     </div>
-    <div class="attach" id="chatAttachPreview" hidden></div>
-    <form class="chat-form" id="chatForm">
-      <label class="btn" for="chatPhoto" tabindex="0" aria-label="Attach a photo">📷</label>
-      <input type="file" id="chatPhoto" accept="image/*" hidden>
-      <textarea id="chatInput" rows="1" placeholder="Ask about outfits, colours, what to buy…" aria-label="Message your stylist"></textarea>
-      <button class="btn primary" type="submit" id="chatSend">Send</button>
-      <button class="btn" type="button" id="chatStop" hidden>Stop</button>
-    </form>
+
+    <div>
+      <details class="note">
+        <summary id="paletteTitle">Colours for the season</summary>
+        <div class="note-body">
+          <div class="palette" id="palette"></div>
+          <p class="muted" id="fabricNote"></p>
+        </div>
+      </details>
+      <details class="note">
+        <summary id="localTitle">Dressing like a local</summary>
+        <div class="note-body"><ul id="localNotes"></ul></div>
+      </details>
+    </div>
   </section>
 
-  <section style="display:flex;flex-direction:column;gap:14px" id="wardrobe">
-    <div class="section-head">
-      <div><span class="label">Your clothes</span><h2>My wardrobe</h2></div>
-      <div class="shop-bar">
-        <label class="btn primary" for="wardrobeFile" tabindex="0">＋ Add clothes</label>
-        <input type="file" id="wardrobeFile" accept="image/*" multiple hidden>
-        <button class="btn" type="button" id="wardExport">Back up</button>
-        <label class="btn" for="wardImport" tabindex="0">Restore</label>
-        <input type="file" id="wardImport" accept="application/json,.json" hidden>
-      </div>
+  <!-- ============ WARDROBE ============ -->
+  <section class="view" id="view-wardrobe" aria-label="Wardrobe" hidden>
+    <div class="vhead">
+      <div><h1>Wardrobe</h1><p class="sub muted" id="wardCount">Your clothes, on this device</p></div>
+      <label class="btn primary" for="wardrobeFile" tabindex="0">＋ Add</label>
+      <input type="file" id="wardrobeFile" accept="image/*" multiple hidden>
     </div>
-    <div class="seg" id="wardFilters" aria-label="Filter wardrobe"></div>
-    <p class="status" id="wardStatus">Loading your wardrobe…</p>
+    <div class="seg scroll" id="wardFilters" aria-label="Filter wardrobe"></div>
+    <p class="gap-note" id="wardStatus">Loading your wardrobe…</p>
     <div class="ward-grid" id="wardGrid"></div>
   </section>
 
-  <section class="two">
-    <div class="panel">
-      <span class="label">Season palette</span>
-      <h3 id="paletteTitle">Colours that work now</h3>
-      <div class="palette" id="palette"></div>
-      <p class="muted" id="fabricNote" style="font-size:14px"></p>
+  <!-- ============ SHOP ============ -->
+  <section class="view" id="view-shop" aria-label="Shop" hidden>
+    <div class="vhead"><div><h1>Shop</h1><p class="sub muted" id="shopsHeading">Stores near you</p></div></div>
+    <div class="switch" id="shopMode" role="group" aria-label="What to search">
+      <button type="button" data-mode="all" aria-pressed="true">Nearby</button>
+      <button type="button" data-mode="brands" aria-pressed="false">Brands</button>
     </div>
-    <div class="panel">
-      <span class="label">Local style</span>
-      <h3 id="localTitle">Dressing like a local</h3>
-      <ul id="localNotes"></ul>
-    </div>
-  </section>
 
-  <section style="display:flex;flex-direction:column;gap:14px">
-    <div class="section-head">
-      <div><span class="label">Shop near you</span><h2 id="shopsHeading">Clothes &amp; accessories nearby</h2></div>
-      <div class="shop-bar">
-        <label class="label" for="radius">Within</label>
-        <select id="radius">
-          <option value="1000">1 km</option>
-          <option value="3000" selected>3 km</option>
-          <option value="5000">5 km</option>
-          <option value="10000">10 km</option>
+    <div class="shop-tools" id="allTools">
+      <div class="inline">
+        <select class="field" id="radius" aria-label="Distance">
+          <option value="1000">Within 1 km</option>
+          <option value="3000" selected>Within 3 km</option>
+          <option value="5000">Within 5 km</option>
+          <option value="10000">Within 10 km</option>
         </select>
-        <button class="btn" id="shopBtn" type="button">Find shops</button>
+        <button class="btn primary" id="shopBtn" type="button">Search</button>
       </div>
     </div>
-    <div class="panel brandbox">
-      <div class="section-head" style="align-items:center">
-        <div><span class="label">Find stores you like</span><h3>Brands near you</h3></div>
-        <div class="shop-bar">
-          <label class="label" for="brandRadius">Within</label>
-          <select id="brandRadius">
-            <option value="5000">5 km</option>
-            <option value="10000" selected>10 km</option>
-            <option value="25000">25 km</option>
-            <option value="50000">50 km</option>
-          </select>
-          <button class="btn primary" id="brandBtn" type="button">Find brands nearby</button>
-        </div>
-      </div>
-      <div class="seg" id="brandChips" aria-label="Brands to search"></div>
-      <form class="search" id="brandForm" autocomplete="off">
-        <input id="brandInput" list="brandList" placeholder="Add any brand, e.g. GU, Bershka, Bata" aria-label="Add a brand">
+
+    <div class="shop-tools" id="brandTools" hidden>
+      <div class="seg scroll" id="brandChips" aria-label="Brands to search"></div>
+      <form class="inline" id="brandForm" autocomplete="off">
+        <input class="field" id="brandInput" list="brandList" placeholder="Add a brand, e.g. GU, Bershka" aria-label="Add a brand">
         <datalist id="brandList"></datalist>
-        <button class="btn" type="submit">Add &amp; search</button>
+        <button class="btn" type="submit">Add</button>
       </form>
-      <p class="status">Tap brands to select them. Store names in local scripts are matched too, such as ユニクロ for UNIQLO. <b>Check stock</b> opens the brand's own site: pick an item, then choose the store-availability option.</p>
+      <div class="inline">
+        <select class="field" id="brandRadius" aria-label="Distance">
+          <option value="5000">Within 5 km</option>
+          <option value="10000" selected>Within 10 km</option>
+          <option value="25000">Within 25 km</option>
+          <option value="50000">Within 50 km</option>
+        </select>
+        <button class="btn primary" id="brandBtn" type="button">Find</button>
+      </div>
+      <p class="status">Local names match too, like ユニクロ for UNIQLO. <b>Check stock</b> opens the brand's site, where an item page shows store availability.</p>
     </div>
-    <div class="seg" id="shopFilters" aria-label="Filter shops"></div>
-    <p class="status" id="shopStatus">Pick your location to see shops around you.</p>
-    <div class="shops">
+
+    <div class="between">
+      <p class="status" id="shopStatus">Pick your location to see shops around you.</p>
+      <div class="switch" id="shopView" role="group" aria-label="Show as" style="flex:none;width:150px">
+        <button type="button" data-show="list" aria-pressed="true">List</button>
+        <button type="button" data-show="map" aria-pressed="false">Map</button>
+      </div>
+    </div>
+    <div class="seg scroll" id="shopFilters" aria-label="Filter shops"></div>
+    <div class="shops" id="shops" data-show="list">
       <div id="map" role="region" aria-label="Map of nearby shops"></div>
       <div class="shop-list" id="shopList"></div>
     </div>
   </section>
 
-  <section style="display:flex;flex-direction:column;gap:14px">
-    <div><span class="label">Saved on this device</span><h2>Saved looks</h2></div>
-    <div class="saved" id="saved"></div>
+  <!-- ============ STYLIST ============ -->
+  <section class="view" id="view-stylist" aria-label="Stylist" hidden>
+    <div class="vhead">
+      <div><h1 id="chatTitle">Stylist</h1><p class="sub muted" id="chatKeyState"></p></div>
+      <div class="row">
+        <button class="btn ghost" type="button" id="chatClear" hidden>New chat</button>
+        <button class="btn icon" type="button" id="keyToggle" aria-label="API key settings"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l2 2M15 8l2 2"/></svg></button>
+      </div>
+    </div>
+    <div class="keybox" id="chatKeyBox" hidden>
+      <p><b>Connect your Anthropic API key.</b> The stylist runs on Claude with your own key, so you pay Anthropic directly, usually a cent or two per message. Create a key at <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a> and set a monthly spend limit there.</p>
+      <form class="keyform" id="keyForm" autocomplete="off">
+        <input class="field" id="apiKey" type="password" placeholder="sk-ant-..." aria-label="Anthropic API key" spellcheck="false">
+        <button class="btn" type="button" id="keyShow">Show</button>
+        <button class="btn primary" type="submit">Save</button>
+        <button class="btn ghost" type="button" id="keyRemove">Remove</button>
+      </form>
+      <p class="muted" style="font-size:13px">Stored only in this browser and sent only to Anthropic. Don't save it on a shared device.</p>
+    </div>
+    <div class="chat-log" id="chatLog" aria-live="polite"></div>
+    <p class="status" id="chatLong" hidden>This chat is getting long. Start a new chat for faster, cheaper replies.</p>
+    <div class="composer">
+      <div class="seg scroll" id="chatChips" aria-label="Suggested questions">
+        <button type="button">What should I wear today?</button>
+        <button type="button" data-photo="1">Rate my outfit</button>
+        <button type="button">Style one of my pieces three ways</button>
+        <button type="button">What's missing from my wardrobe this season?</button>
+        <button type="button">Help me pack for a 3-day trip</button>
+        <button type="button">What should I wear to a wedding here?</button>
+      </div>
+      <div class="attach" id="chatAttachPreview" hidden></div>
+      <form class="chat-form" id="chatForm">
+        <label class="btn" for="chatPhoto" tabindex="0" aria-label="Attach a photo">
+          <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-2.5h6L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
+        </label>
+        <input type="file" id="chatPhoto" accept="image/*" hidden>
+        <textarea id="chatInput" rows="1" placeholder="Ask your stylist…" aria-label="Message your stylist"></textarea>
+        <button class="btn primary" type="submit" id="chatSend">Send</button>
+        <button class="btn" type="button" id="chatStop" hidden>Stop</button>
+      </form>
+    </div>
   </section>
 
-  <footer>Weather by Open-Meteo · places &amp; map data © OpenStreetMap contributors · shop listings come from OpenStreetMap and may be incomplete, so check opening hours before you go.</footer>
-</div>
+  <!-- ============ ME ============ -->
+  <section class="view" id="view-me" aria-label="Me" hidden>
+    <div class="vhead"><div><h1>Me</h1><p class="sub muted">Preferences and saved looks</p></div></div>
+    <div class="list">
+      <div class="between">
+        <div><span class="label" style="margin-bottom:2px">Location</span><span id="mePlace">Not set</span></div>
+        <button class="btn" type="button" id="mePlaceBtn">Change</button>
+      </div>
+      <div><span class="label">I wear</span><div class="seg" data-key="wear"></div></div>
+      <div><span class="label">My style</span><div class="seg" data-key="vibe"></div></div>
+      <div class="between">
+        <span class="label" style="margin:0">Temperature</span>
+        <div class="switch" id="unitSwitch" role="group" aria-label="Temperature unit" style="width:120px">
+          <button type="button" data-u="C">°C</button>
+          <button type="button" data-u="F">°F</button>
+        </div>
+      </div>
+      <div class="between">
+        <div><span class="label" style="margin-bottom:2px">AI stylist</span><span id="meKey" class="muted">No key yet</span></div>
+        <button class="btn" type="button" id="meKeyBtn">Manage</button>
+      </div>
+      <div class="between">
+        <div><span class="label" style="margin-bottom:2px">Wardrobe backup</span><span class="muted">Move your clothes to another device</span></div>
+        <div class="row">
+          <button class="btn" type="button" id="wardExport">Back up</button>
+          <label class="btn" for="wardImport" tabindex="0">Restore</label>
+          <input type="file" id="wardImport" accept="application/json,.json" hidden>
+        </div>
+      </div>
+    </div>
+    <div class="block">
+      <div class="block-head"><h2>Saved looks</h2></div>
+      <div class="saved" id="saved"></div>
+    </div>
+    <footer>Weather by Open-Meteo. Places and map data © OpenStreetMap contributors. Shop listings may be incomplete, so check opening hours before you go. AI stylist by Claude (Anthropic).</footer>
+  </section>
+</main>
+
+<div class="tabbar"><nav aria-label="Main">
+  <button class="tab" type="button" data-tab="today" aria-current="page"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></svg>Today</button>
+  <button class="tab" type="button" data-tab="wardrobe"><svg viewBox="0 0 24 24"><path d="M12 6a2 2 0 1 1 2-2"/><path d="M12 6v1.5L3 15.5a1.5 1.5 0 0 0 1 2.5h16a1.5 1.5 0 0 0 1-2.5L12 7.5"/></svg>Wardrobe</button>
+  <button class="tab" type="button" data-tab="shop"><svg viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/></svg>Shop</button>
+  <button class="tab" type="button" data-tab="stylist"><svg viewBox="0 0 24 24"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M18.5 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>Stylist</button>
+  <button class="tab" type="button" data-tab="me"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5"/></svg>Me</button>
+</nav></div>
+
+<dialog id="placeDlg" aria-labelledby="placeTitle">
+  <div class="sheet">
+    <div class="grab"></div>
+    <div class="between"><h3 id="placeTitle">Location</h3><button class="btn ghost" type="button" id="placeClose">Done</button></div>
+    <button class="btn primary" id="locBtn" type="button">Use my current location</button>
+    <form id="searchForm" autocomplete="off">
+      <input class="field" id="cityInput" type="search" placeholder="Or search a city" aria-label="Search a city">
+    </form>
+    <div class="suggest" id="suggest" hidden></div>
+  </div>
+</dialog>
+
 <dialog id="itemDlg" aria-labelledby="dlgTitle">
   <form id="itemForm" class="dlg">
     <div class="dlg-img"><img id="dlgImg" alt="Photo of the item"></div>
     <div class="dlg-fields">
-      <h3 id="dlgTitle">Add to wardrobe</h3>
+      <div class="between"><h3 id="dlgTitle">Add to wardrobe</h3><button type="button" class="btn" id="dlgAI" hidden>✦ Auto-tag</button></div>
       <label class="label" for="itemName">Name</label>
-      <input id="itemName" type="text" maxlength="60">
+      <input class="field" id="itemName" type="text" maxlength="60">
       <span class="label">Type</span><div class="seg" id="dlgCat"></div>
       <span class="label">Warmth</span><div class="seg" id="dlgWarm"></div>
-      <span class="label">Good for (pick any)</span><div class="seg" id="dlgStyles"></div>
+      <span class="label">Good for</span><div class="seg" id="dlgStyles"></div>
       <label class="label" for="itemColor">Main colour</label>
-      <div class="colorrow"><input type="color" id="itemColor"><span id="colorName"></span><span class="muted" style="font-size:12px">Detected from the photo. Tap to adjust.</span></div>
+      <div class="colorrow"><input type="color" id="itemColor"><span id="colorName"></span><span class="muted" style="font-size:12px">Detected from the photo</span></div>
       <div class="dlg-foot">
         <span id="dlgCount" class="muted"></span>
-        <button type="button" class="btn" id="dlgAI" hidden>✦ Auto-tag with AI</button>
-        <button type="button" class="btn" id="dlgDelete">Delete</button>
+        <button type="button" class="btn ghost" id="dlgDelete">Delete</button>
         <button type="button" class="btn" id="dlgSkip">Skip</button>
         <button type="submit" class="btn primary">Save</button>
       </div>
     </div>
   </form>
 </dialog>
-<a class="btn primary ask-fab" href="#stylist" id="askFab">✦ Ask stylist</a>
 <div class="toast" id="toast" role="status"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
@@ -686,16 +787,17 @@ function renderControls(){
 function renderWeather(){
   const w = state.weather, p = state.place;
   $("#placeName").textContent = p.name;
+  $("#mePlace").textContent = p.example ? "Not set (showing " + p.name + ")" : [p.name, p.country].filter(Boolean).join(", ");
   $("#exampleTag").hidden = !p.example;
-  $("#todayLabel").textContent = new Date().toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"long"}) + (p.country ? " · " + p.country : "");
+  $("#todayLabel").textContent = new Date().toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"long"});
   if(!w) return;
   const c = w.current, d = w.daily, [cond] = WMO(c.weather_code);
   const s = season(p.lat, p.cc, w);
   $("#tempNow").textContent = fmtT(c.temperature_2m);
+  $("#condNow").textContent = cond;
   $("#feels").textContent = `Feels like ${fmtT(c.apparent_temperature)} · H ${fmtT(d.temperature_2m_max[0])} L ${fmtT(d.temperature_2m_min[0])}`;
   $("#heroMeta").innerHTML = [
     `<span class="pill season">${esc(s.name)}</span>`,
-    `<span class="pill">${esc(cond)}</span>`,
     `<span class="pill">Rain ${d.precipitation_probability_max[0] ?? 0}%</span>`,
     `<span class="pill">Wind ${Math.round(c.wind_speed_10m)} km/h</span>`,
     `<span class="pill">UV ${Math.round(d.uv_index_max[0] ?? 0)}</span>`,
@@ -703,7 +805,7 @@ function renderWeather(){
   ].join("");
   const b = band(c.apparent_temperature);
   const verdicts = {F:"Bundle up. It's properly freezing, so think insulation and covered skin.",C:"Coat weather. Layer a knit under a warm outer layer.",K:"Cool out there. A jacket or a solid layer is your friend.",M:"Mild and easy. One light layer and you're set.",W:"Warm. Breathable fabrics and short sleeves.",H:"Hot. Go loose, light and linen, and stay in the shade."};
-  $("#verdict").textContent = verdicts[b] + " " + s.note;
+  $("#verdict").textContent = verdicts[b];
   $("#week").innerHTML = d.time.map((t,i) => {
     const dt = new Date(t+"T12:00");
     return `<div class="day">${i===0?"Today":dt.toLocaleDateString(undefined,{weekday:"short"})}<b>${fmtT(d.temperature_2m_max[i])}</b><span style="opacity:.7">${fmtT(d.temperature_2m_min[i])}</span><i>${dayHint(d.apparent_temperature_max[i], d.weather_code[i])}</i></div>`;
@@ -732,13 +834,14 @@ function renderLooks(){
   const wl = state.wardrobe?.length >= 2 ? buildWardrobeLook() : null;
   if(wl) state.looks = [wl, ...state.looks].slice(0,3);
   const occ = OPTIONS.occasion.find(o=>o[0]===state.occasion)[1];
-  $("#looksTitle").textContent = `${occ} looks for ${fmtT(state.weather.current.apparent_temperature)} and ${WMO(state.weather.current.weather_code)[0].toLowerCase()}`;
+  $("#looksTitle").textContent = `${occ} looks`;
   $("#looks").innerHTML = state.looks.map((l,i) => lookCard(l,i,false)).join("");
+  $("#looks").scrollLeft = 0; renderDots();
   const s = season(state.place.lat, state.place.cc, state.weather);
   const pal = paletteFor(s.key, state.vibe);
   $("#paletteTitle").textContent = `${s.name} colours${VIBE_PAL[state.vibe] ? " with a "+state.vibe+" twist" : ""}`;
   $("#palette").innerHTML = pal.map(([n,h]) => `<div class="pal"><div style="background:${h}"></div><b>${esc(n)}</b><code>${h}</code></div>`).join("");
-  $("#fabricNote").innerHTML = `<b style="color:var(--ink)">Best fabrics right now:</b> ${esc(FABRICS[band(state.weather.current.apparent_temperature)])}`;
+  $("#fabricNote").innerHTML = `${esc(s.note)}<br><br><b style="color:var(--ink)">Best fabrics right now:</b> ${esc(FABRICS[band(state.weather.current.apparent_temperature)])}`;
 }
 function renderLocal(){
   const p = state.place; if(!p) return;
@@ -768,12 +871,13 @@ document.addEventListener("click", e => {
 /* ================= location ================= */
 async function setPlace(place){
   state.place = place; store.set("place", place.example ? null : place);
-  state.shops = []; state.brandShops = []; state.view = "all"; renderShops(); renderBrands();
+  state.shops = []; state.brandShops = []; state.brandSearched = []; state.view = state.shopMode==="brands" ? "brand" : "all"; renderShops(); renderBrands();
   renderWeather();
   try{ state.weather = await loadWeather(place.lat, place.lon); }
   catch{ $("#verdict").textContent = "Couldn't load the weather. Check your connection, then search the city again."; state.weather = null; }
   renderWeather(); renderLooks(); renderLocal(); renderWardrobe(); setMapCenter();
-  if(!place.example) findShops();
+  if(!place.example) (state.shopMode==="brands" ? findBrands() : findShops());
+  if($("#placeDlg").open) $("#placeDlg").close();
 }
 async function reverseGeocode(lat, lon){
   try{
@@ -818,8 +922,9 @@ $("#cityInput").addEventListener("input", e => {
   }, 300);
 });
 $("#searchForm").addEventListener("submit", e => { e.preventDefault(); const f = $("#suggest button"); if(f) f.click(); });
-document.addEventListener("click", e => { if(!e.target.closest("#searchForm")) $("#suggest").hidden = true; });
-$("#unitBtn").onclick = () => { state.unit = state.unit==="C"?"F":"C"; store.set("unit",state.unit); $("#unitBtn").textContent = "°"+state.unit; renderWeather(); renderLooks(); };
+document.addEventListener("click", e => { if(!e.target.closest("#placeDlg")) $("#suggest").hidden = true; });
+$("#unitSwitch").onclick = e => { const b = e.target.closest("[data-u]"); if(!b) return; state.unit = b.dataset.u; store.set("unit",state.unit); renderUnit(); renderWeather(); renderLooks(); };
+function renderUnit(){ document.querySelectorAll("#unitSwitch [data-u]").forEach(b => b.setAttribute("aria-pressed", b.dataset.u===state.unit)); }
 $("#shuffleBtn").onclick = () => { state.seed = Math.floor(Math.random()*1e6); renderLooks(); };
 
 /* ================= shops ================= */
@@ -1025,7 +1130,7 @@ function setMapCenter(){
   if(!map || !state.place) return;
   map.setView([state.place.lat, state.place.lon], 14);
   if(youMarker) youMarker.remove();
-  youMarker = L.circleMarker([state.place.lat, state.place.lon], { radius:8, color:"#fff", weight:3, fillColor:"#3049e8", fillOpacity:1 }).addTo(map).bindTooltip(state.place.precise ? "You are here" : state.place.name);
+  youMarker = L.circleMarker([state.place.lat, state.place.lon], { radius:8, color:"#fff", weight:3, fillColor:"#111111", fillOpacity:1 }).addTo(map).bindTooltip(state.place.precise ? "You are here" : state.place.name);
 }
 const gmSearch = b => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b + " near " + (state.place?.name || ""))}`;
 function renderShops(){
@@ -1039,7 +1144,7 @@ function renderShops(){
   $("#shopFilters").innerHTML = chipDefs.map(([k,l]) => `<button type="button" data-f="${esc(k)}" aria-pressed="${filter===k}">${esc(l)}${k==="all" ? (data.length?` (${data.length})`:"") : ` (${counts[k]})`}</button>`).join("");
   const list = data.filter(s => filter==="all" || keyOf(s)===filter);
   if(markerLayer) markerLayer.clearLayers();
-  $("#shopsHeading").textContent = brandView ? `${state.brandSearched.join(", ")} near you` : "Clothes & accessories nearby";
+  $("#shopsHeading").textContent = brandView && state.brandSearched.length ? `${state.brandSearched.join(", ")} near you` : "Clothes, shoes and accessories near you";
 
   // Brands with no stores in the map data get a Google Maps fallback.
   const missing = brandView ? state.brandSearched.filter(b => !counts[b]) : [];
@@ -1069,7 +1174,7 @@ function renderShops(){
   if(map){
     const bounds = [[state.place.lat, state.place.lon]];
     list.slice(0,150).forEach(s => {
-      markers[s.id] = L.circleMarker([s.lat,s.lon], { radius: brandView?8:6, color:"#1d1a2b", weight:1.5, fillColor: brandView ? "#3049e8" : "#f2c6c2", fillOpacity:.95 })
+      markers[s.id] = L.circleMarker([s.lat,s.lon], { radius: brandView?8:6, color:"#111111", weight:1.5, fillColor: brandView ? "#111111" : "#ffffff", fillOpacity:1 })
         .bindPopup(`<b>${esc(s.name)}</b><br>${esc(brandView ? s.brandName : TYPE_LABEL[s.type])}<br><a href="https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lon}" target="_blank" rel="noopener">Directions</a>`)
         .addTo(markerLayer);
       bounds.push([s.lat,s.lon]);
@@ -1079,7 +1184,7 @@ function renderShops(){
 }
 $("#shopFilters").onclick = e => { const b = e.target.closest("button"); if(!b) return;
   if(state.view==="brand") state.brandFilter = b.dataset.f; else state.shopFilter = b.dataset.f; renderShops(); };
-$("#shopStatus").addEventListener("click", e => { if(e.target.closest("[data-allshops]")){ state.view = "all"; if(state.shops.length) renderShops(); else findShops(); } });
+$("#shopStatus").addEventListener("click", e => { if(e.target.closest("[data-allshops]")) setShopMode("all"); });
 $("#shopList").addEventListener("click", e => {
   if(e.target.closest("a")) return;
   const el = e.target.closest(".shop"); if(!el || !map) return;
@@ -1327,6 +1432,7 @@ function wardrobeGaps(){
 function timeAgo(t){ if(!t) return "Not worn yet"; const d = Math.floor((Date.now()-t)/864e5); return d<=0 ? "Worn today" : d===1 ? "Worn yesterday" : `Worn ${d} days ago`; }
 function renderWardrobe(){
   const ws = state.wardrobe;
+  $("#wardCount").textContent = ws.length ? `${ws.length} item${ws.length===1?"":"s"} · stored on this device` : "Your clothes, on this device";
   const counts = {}; ws.forEach(i => counts[i.cat] = (counts[i.cat]||0)+1);
   $("#wardFilters").innerHTML = ws.length ? [["all",`All (${ws.length})`], ...W_CATS.filter(([k]) => counts[k]).map(([k,l]) => [k, `${l} (${counts[k]})`])]
     .map(([k,l]) => `<button type="button" data-f="${k}" aria-pressed="${state.wardFilter===k}">${esc(l)}</button>`).join("") : "";
@@ -1345,7 +1451,7 @@ function renderWardrobe(){
     : gaps.length ? `<b style="color:var(--ink)">Missing for today's weather:</b> ${gaps.map(([l,s]) => `${esc(l)} (try: ${esc(s)})`).join(", ")}. <button type="button" class="linkbtn" data-gotobrands>Find stores nearby</button>`
     : "You have everything you need for today's weather. Photos stay on this device.";
 }
-$("#wardStatus").addEventListener("click", e => { if(e.target.closest("[data-gotobrands]")) document.querySelector(".brandbox").scrollIntoView({ behavior:"smooth", block:"start" }); });
+$("#wardStatus").addEventListener("click", e => { if(e.target.closest("[data-gotobrands]")){ showTab("shop"); setShopMode("brands"); } });
 async function reloadWardrobe(){
   try{ state.wardrobe = await wdb.all() || []; }catch{ state.wardrobe = []; $("#wardStatus").textContent = "This browser blocks on-device storage (private mode?), so the wardrobe can't be saved."; }
   renderWardrobe(); renderLooks();
@@ -1450,7 +1556,8 @@ const userVisible = content => typeof content === "string" ? content : content.f
 
 function renderChat(){
   const log = $("#chatLog"), hasKey = !!getKey();
-  $("#chatKeyState").textContent = hasKey ? "Key saved on this device" : "No API key yet";
+  $("#chatKeyState").textContent = hasKey ? "Your personal stylist" : "Add your API key to start";
+  $("#meKey").textContent = hasKey ? "Key saved on this device" : "No key yet";
   $("#chatKeyBox").hidden = hasKey && !state.showKeyBox;
   if(!state.chat.length){
     log.innerHTML = `<div class="bubble ai"><p>Hi! I'm your stylist. I can see today's weather${state.wardrobe?.length ? `, your ${state.wardrobe.length} wardrobe items` : ""} and the stores near you. Ask me what to wear, how to style a piece, what to pack, or send a photo of an outfit for feedback.</p>${hasKey ? "" : `<p class="muted">To start, add your Anthropic API key below.</p>`}</div>`;
@@ -1463,7 +1570,7 @@ function renderChat(){
       return `<div class="bubble ai">${md(textOf(m.content)) || `<p class="muted">(no text)</p>`}</div>`;
     }).join("");
   }
-  log.scrollTop = log.scrollHeight;
+  scrollChat();
   $("#chatClear").hidden = !state.chat.length;
   $("#chatLong").hidden = state.chat.length < 40;
 }
@@ -1488,7 +1595,7 @@ async function sendChat(text){
 
   const log = $("#chatLog");
   const bubble = document.createElement("div"); bubble.className = "bubble ai"; bubble.innerHTML = `<p class="muted typing">Thinking<span>.</span><span>.</span><span>.</span></p>`;
-  log.appendChild(bubble); log.scrollTop = log.scrollHeight;
+  log.appendChild(bubble); scrollChat();
   setChatBusy(true);
   let streamed = "";
   try{
@@ -1503,7 +1610,7 @@ async function sendChat(text){
       fallbacks: "default",
       messages: state.chat,
     }, { signal: chatAbort.signal });
-    stream.on("text", delta => { streamed += delta; bubble.innerHTML = md(streamed); log.scrollTop = log.scrollHeight; });
+    stream.on("text", delta => { streamed += delta; bubble.innerHTML = md(streamed); scrollChat(); });
     const msg = await stream.finalMessage();
     if(msg.stop_reason === "refusal"){
       state.chat.pop();                     // drop the declined turn so the conversation stays valid
@@ -1561,8 +1668,6 @@ $("#keyForm").addEventListener("submit", e => {
   setKey(k); $("#apiKey").value = ""; state.showKeyBox = false; renderChat(); renderWardrobeAI(); toast("API key saved on this device");
 });
 $("#keyRemove").onclick = () => { setKey(""); state.showKeyBox = true; renderChat(); renderWardrobeAI(); toast("API key removed"); };
-if("IntersectionObserver" in window) new IntersectionObserver(([en]) => { $("#askFab").hidden = en.isIntersecting; }, { threshold: 0.05 }).observe($("#stylist"));
-$("#askFab").addEventListener("click", () => setTimeout(() => $("#chatInput").focus({ preventScroll:true }), 400));
 $("#keyShow").onclick = () => { const i = $("#apiKey"); i.type = i.type==="password" ? "text" : "password"; $("#keyShow").textContent = i.type==="password" ? "Show" : "Hide"; };
 
 /* --- AI auto-tagging in the wardrobe dialog --- */
@@ -1601,9 +1706,69 @@ $("#dlgAI").onclick = async () => {
   finally{ btn.disabled = false; btn.textContent = "✦ Auto-tag with AI"; }
 };
 
+/* ================= navigation & app shell ================= */
+const TABS = ["today","wardrobe","shop","stylist","me"];
+function showTab(t, opts = {}){
+  if(!TABS.includes(t)) t = "today";
+  TABS.forEach(x => { $("#view-"+x).hidden = x !== t; });
+  document.querySelectorAll(".tab").forEach(b => b.toggleAttribute("aria-current", false));
+  document.querySelector(`.tab[data-tab="${t}"]`).setAttribute("aria-current","page");
+  state.tab = t;
+  if(!opts.fromHash && location.hash.slice(1) !== t){ try{ history.replaceState(null, "", "#"+t); }catch{} }
+  if(t==="shop" && map) setTimeout(() => map.invalidateSize(), 60);
+  if(t==="stylist") setTimeout(scrollChat, 30); else window.scrollTo(0,0);
+}
+document.querySelector(".tabbar").addEventListener("click", e => { const b = e.target.closest("[data-tab]"); if(b) showTab(b.dataset.tab); });
+window.addEventListener("hashchange", () => showTab(location.hash.slice(1), { fromHash:true }));
+function scrollChat(){ if(state.tab==="stylist") window.scrollTo(0, document.documentElement.scrollHeight); }
+
+/* location sheet */
+const placeDlg = $("#placeDlg");
+const openPlace = () => { $("#suggest").hidden = true; placeDlg.showModal(); };
+$("#placeBtn").onclick = openPlace; $("#mePlaceBtn").onclick = openPlace;
+$("#placeClose").onclick = () => placeDlg.close();
+placeDlg.addEventListener("click", e => { if(e.target === placeDlg) placeDlg.close(); });
+
+/* outfit carousel dots */
+function renderDots(){
+  const n = state.looks.length;
+  $("#lookDots").innerHTML = n > 1 ? state.looks.map((l,i) => `<button type="button" data-dot="${i}" aria-label="Look ${i+1}" aria-current="${i===0}"></button>`).join("") : "";
+}
+$("#looks").addEventListener("scroll", () => {
+  const el = $("#looks"), i = Math.round(el.scrollLeft / Math.max(1, el.clientWidth));
+  document.querySelectorAll("#lookDots button").forEach((b,k) => b.setAttribute("aria-current", k===i));
+}, { passive:true });
+$("#lookDots").onclick = e => { const b = e.target.closest("[data-dot]"); if(!b) return; const el = $("#looks"); el.scrollTo({ left: +b.dataset.dot * (el.clientWidth + 14), behavior:"smooth" }); };
+
+/* shop: Nearby / Brands, and List / Map */
+state.shopMode = store.get("shopMode", "all");
+function setShopMode(m){
+  state.shopMode = m; store.set("shopMode", m);
+  document.querySelectorAll("#shopMode [data-mode]").forEach(b => b.setAttribute("aria-pressed", b.dataset.mode===m));
+  $("#allTools").hidden = m !== "all"; $("#brandTools").hidden = m !== "brands";
+  if(m==="brands"){ state.view = "brand"; if(!state.brandSearched.length && state.place && !state.place.example) findBrands(); else renderShops(); }
+  else { state.view = "all"; if(!state.shops.length && state.place && !state.place.example) findShops(); else renderShops(); }
+}
+$("#shopMode").onclick = e => { const b = e.target.closest("[data-mode]"); if(b) setShopMode(b.dataset.mode); };
+$("#shopView").onclick = e => {
+  const b = e.target.closest("[data-show]"); if(!b) return;
+  $("#shops").dataset.show = b.dataset.show;
+  document.querySelectorAll("#shopView [data-show]").forEach(x => x.setAttribute("aria-pressed", x===b));
+  if(b.dataset.show==="map" && map) setTimeout(() => map.invalidateSize(), 30);
+};
+$("#shopList").addEventListener("click", e => {   // tapping a shop in the list jumps to it on the map
+  if(e.target.closest("a")) return;
+  if(e.target.closest(".shop") && $("#shops").dataset.show==="list"){ $("#shopView [data-show=map]").click(); }
+});
+
+/* stylist: key shortcut from Me, growing message box */
+$("#meKeyBtn").onclick = () => { showTab("stylist"); state.showKeyBox = true; renderChat(); setTimeout(() => $("#apiKey").focus(), 80); };
+$("#chatInput").addEventListener("input", e => { const t = e.target; t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight, 140) + "px"; });
+
 /* ================= boot ================= */
-$("#unitBtn").textContent = "°"+state.unit;
+renderUnit();
 renderControls(); renderSaved(); initMap(); renderShops(); renderBrands(); reloadWardrobe(); renderChat(); renderWardrobeAI();
+setShopMode(state.shopMode); showTab(location.hash.slice(1) || "today", { fromHash:true });
 const savedPlace = store.get("place", null);
 if(savedPlace) setPlace(savedPlace);
 else setPlace({ name:"Paris", country:"France", cc:"FR", lat:48.8566, lon:2.3522, example:true });

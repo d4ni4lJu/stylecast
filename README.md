@@ -6,6 +6,14 @@ Outfit suggestions for your weather, season and local style, plus clothing and a
 
 On iPhone, open it in Safari, then tap Share → Add to Home Screen.
 
+## Using it
+Five tabs along the bottom:
+- **Today:** weather, what you're dressing for, and three outfits to swipe through
+- **Wardrobe:** your clothes from photos (tap ＋ Add)
+- **Shop:** stores nearby or your favourite brands, as a list or a map, with Check stock links
+- **Stylist:** chat with the AI stylist
+- **Me:** location, what you wear, your style, °C/°F, saved looks, AI key and wardrobe backup
+
 ## Run it
 Location access only works on `https://` or `localhost`, so serve the folder rather than double-clicking the file:
 
