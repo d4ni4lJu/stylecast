@@ -1,0 +1,1612 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Stylecast</title>
+<meta name="description" content="Outfit suggestions for your weather, season and local style, plus clothing and accessory shops near you.">
+<meta name="theme-color" content="#1d1a2b">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Stylecast">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+/* Layout: a lookbook. Weather strip on top, three outfit cards as the centrepiece, then local style and a shop map. */
+:root{
+  --bg:#f3f2f7; --surface:#ffffff; --ink:#1d1a2b; --muted:#615c74; --line:#dedbe8;
+  --accent:#3049e8; --accent-ink:#ffffff; --blush:#f2c6c2; --chip:#e9e7f1;
+  --good:#1f7a4d; --warn:#a15c00;
+  --display:"Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --body:"Figtree", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono:"JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  --r:14px;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#13111c; --surface:#1d1a29; --ink:#efedf6; --muted:#a39fb6; --line:#2f2b40;
+  --accent:#7d8dff; --accent-ink:#0f0d18; --blush:#6b3f45; --chip:#29253a;
+  --good:#5fd39a; --warn:#f0b04f; color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#13111c; --surface:#1d1a29; --ink:#efedf6; --muted:#a39fb6; --line:#2f2b40;
+  --accent:#7d8dff; --accent-ink:#0f0d18; --blush:#6b3f45; --chip:#29253a;
+  --good:#5fd39a; --warn:#f0b04f; color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--body);
+  padding-left:max(16px, env(safe-area-inset-left,0px));padding-right:max(16px, env(safe-area-inset-right,0px));
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:calc(32px + env(safe-area-inset-bottom,0px))}
+.wrap{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;letter-spacing:-.01em}
+h2{font-size:clamp(22px,3vw,30px);font-weight:800}
+h3{font-size:18px;font-weight:700}
+p{margin:0}
+.muted{color:var(--muted)}
+.label{font-size:11px;letter-spacing:.09em;text-transform:uppercase;font-weight:700;color:var(--muted)}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+a{color:var(--accent)}
+
+/* top bar */
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-block:18px 0}
+.brand{display:flex;align-items:baseline;gap:10px}
+.brand h1{font-size:28px;font-weight:800}
+.brand h1 span{color:var(--accent)}
+.top-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 14px;font-weight:600;display:inline-flex;gap:8px;align-items:center}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn:disabled{opacity:.55;cursor:wait}
+.search{display:flex;gap:6px;position:relative}
+.search input{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 14px;width:min(240px,60vw)}
+.suggest{position:absolute;top:100%;left:0;right:0;margin-top:4px;background:var(--surface);border:1px solid var(--line);border-radius:12px;z-index:1000;overflow:hidden;box-shadow:0 12px 30px rgb(0 0 0 / .15)}
+.suggest button{display:block;width:100%;text-align:left;background:none;border:0;padding:9px 14px}
+.suggest button:hover,.suggest button:focus{background:var(--chip)}
+
+/* hero weather */
+.hero{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:20px;background:var(--ink);color:var(--bg);border-radius:22px;padding:24px;position:relative;overflow:hidden}
+.hero::after{content:"";position:absolute;right:-60px;top:-60px;width:240px;height:240px;border-radius:50%;background:var(--blush);opacity:.35;pointer-events:none}
+.hero .label{color:color-mix(in srgb,var(--bg) 65%,transparent)}
+.place{font-family:var(--display);font-size:clamp(30px,5vw,52px);font-weight:800;line-height:1.02}
+.temp{font-family:var(--display);font-size:clamp(56px,9vw,96px);font-weight:800;line-height:.9;font-variant-numeric:tabular-nums}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.pill{border-radius:999px;padding:4px 11px;font-size:13px;font-weight:600;background:color-mix(in srgb,var(--bg) 14%,transparent);color:var(--bg)}
+.pill.season{background:var(--blush);color:#1d1a2b}
+.hero-right{display:flex;flex-direction:column;gap:10px;justify-content:space-between;z-index:1}
+.verdict{font-size:18px;font-weight:600;line-height:1.35}
+.week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.day{text-align:center;font-size:12px;padding:8px 2px;border-radius:10px;background:color-mix(in srgb,var(--bg) 9%,transparent)}
+.day b{display:block;font-size:14px;font-variant-numeric:tabular-nums}
+.day i{font-style:normal;display:block;opacity:.75;font-size:11px;margin-top:2px;line-height:1.2}
+.example{font-size:12px;font-weight:700;background:var(--warn);color:var(--bg);border-radius:6px;padding:2px 8px;align-self:flex-start}
+
+/* controls */
+.controls{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.ctrl{display:flex;flex-direction:column;gap:8px;min-width:0}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;font-size:14px;font-weight:500}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+
+/* looks */
+.section-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.looks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.look{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.look-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.look-num{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.swatches{display:flex;gap:6px}
+.sw{width:30px;height:30px;border-radius:50%;border:1px solid var(--line)}
+.slots{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px}
+.slots li{display:grid;grid-template-columns:86px minmax(0,1fr);gap:8px;align-items:center}
+.slots li .label{font-size:10px}
+.tip{font-size:13.5px;color:var(--muted);border-top:1px dashed var(--line);padding-top:12px}
+.look-foot{display:flex;gap:8px;margin-top:auto;flex-wrap:wrap}
+.look-foot .btn{padding:6px 12px;font-size:13px}
+.tag{display:inline-block;align-self:flex-start;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:var(--chip);border-radius:6px;padding:2px 7px;color:var(--muted)}
+.tag.trad{background:var(--blush);color:var(--ink)}
+
+/* local + palette */
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:20px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.panel ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
+.palette{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:10px}
+.pal{display:flex;flex-direction:column;gap:4px;font-size:12px}
+.pal div{height:52px;border-radius:10px;border:1px solid var(--line)}
+.pal code{font-family:var(--mono);font-size:11px;color:var(--muted)}
+
+/* shops */
+.shop-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.shop-bar select{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 10px}
+.shops{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:16px;align-items:start}
+#map{height:460px;border-radius:var(--r);border:1px solid var(--line);background:var(--chip);z-index:0}
+.shop-list{display:flex;flex-direction:column;gap:8px;max-height:460px;overflow:auto;padding-right:4px}
+.shop{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;cursor:pointer;text-align:left}
+.shop:hover,.shop.active{border-color:var(--accent)}
+.shop h4{margin:0;font-size:15px;font-weight:700;overflow-wrap:anywhere}
+.shop .dist{font-family:var(--mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.shop .meta{grid-column:1/-1;font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.shop .links{grid-column:1/-1;display:flex;gap:12px;font-size:13px;font-weight:600;flex-wrap:wrap}
+.empty{border:1px dashed var(--line);border-radius:12px;padding:18px;color:var(--muted);text-align:center}
+.status{font-size:13px;color:var(--muted)}
+.status.err{color:var(--warn)}
+.brandbox{gap:14px}
+.brandbox .search input{width:min(320px,100%)}
+.shop .links a.stock{background:var(--accent);color:var(--accent-ink);text-decoration:none;border-radius:999px;padding:1px 10px}
+.linkbtn{background:none;border:0;padding:0;color:var(--accent);font-weight:600;text-decoration:underline}
+.saved{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.saved .look{padding:14px;gap:10px}
+footer{font-size:12.5px;color:var(--muted);border-top:1px solid var(--line);padding-top:14px}
+.ward-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.ward-empty{grid-column:1/-1;text-align:left;line-height:1.6}
+.witem{display:flex;flex-direction:column;gap:3px;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:8px;min-width:0}
+.witem:hover{border-color:var(--accent)}
+.witem img{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:8px;background:var(--chip);margin-bottom:4px}
+.wname{font-weight:600;font-size:14px;display:flex;gap:6px;align-items:center;overflow-wrap:anywhere}
+.wmeta{font-size:12px;color:var(--muted)}
+.dot{width:12px;height:12px;border-radius:50%;flex:none;border:1px solid var(--line)}
+.slot-v{display:flex;gap:10px;align-items:center;min-width:0}
+.slot-v.miss{color:var(--muted);font-style:italic}
+.thumb{width:44px;height:52px;object-fit:cover;border-radius:6px;flex:none;border:1px solid var(--line)}
+.tag.ward{background:var(--accent);color:var(--accent-ink)}
+dialog{border:1px solid var(--line);border-radius:18px;padding:0;background:var(--surface);color:var(--ink);width:min(760px,calc(100vw - 32px));max-height:calc(100vh - 32px)}
+dialog::backdrop{background:rgb(10 8 20 / .55)}
+.dlg{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);margin:0}
+.dlg-img{background:var(--chip);display:flex;align-items:center;justify-content:center;min-height:240px}
+.dlg-img img{width:100%;height:100%;max-height:70vh;object-fit:contain}
+.dlg-fields{padding:20px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.dlg-fields input[type=text]{border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:9px 12px}
+.colorrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.colorrow input{width:44px;height:34px;border:1px solid var(--line);border-radius:8px;background:none;padding:2px}
+.dlg-foot{display:flex;gap:8px;justify-content:flex-end;align-items:center;flex-wrap:wrap;margin-top:8px}
+.dlg-foot #dlgCount{margin-right:auto;font-size:13px}
+@media (max-width:640px){ .dlg{grid-template-columns:minmax(0,1fr)} .dlg-img{min-height:0;max-height:34vh} .dlg-img img{max-height:34vh} }
+.chat{gap:14px}
+.chat-log{display:flex;flex-direction:column;gap:10px;max-height:480px;min-height:120px;overflow-y:auto;padding:4px 2px}
+.bubble{max-width:min(620px,88%);padding:10px 14px;border-radius:16px;display:flex;flex-direction:column;gap:6px;overflow-wrap:anywhere}
+.bubble p{margin:0}
+.bubble ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:3px}
+.bubble.ai{background:var(--chip);align-self:flex-start;border-bottom-left-radius:4px}
+.bubble.me{background:var(--accent);color:var(--accent-ink);align-self:flex-end;border-bottom-right-radius:4px}
+.bubble.me img{max-width:160px;max-height:160px;object-fit:cover;border-radius:10px}
+.err-text{color:var(--warn);font-weight:600}
+.typing span{animation:blink 1.2s infinite both}.typing span:nth-child(2){animation-delay:.2s}.typing span:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,80%,100%{opacity:.2}40%{opacity:1}}
+.chat-form{display:flex;gap:8px;align-items:flex-end}
+.chat-form textarea{flex:1;min-width:0;resize:vertical;min-height:42px;max-height:160px;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:14px;padding:10px 14px;font:inherit}
+.keybox{border:1px dashed var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.keyform{display:flex;gap:8px;flex-wrap:wrap}
+.keyform input{flex:1;min-width:0;width:200px;border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:8px 12px;font-family:var(--mono);font-size:13px}
+.attach{display:flex;gap:10px;align-items:center}
+.attach img{height:64px;border-radius:8px;border:1px solid var(--line)}
+#chatChips button:disabled{opacity:.5}
+.ask-fab{position:fixed;right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:1500;box-shadow:0 8px 24px rgb(0 0 0 / .2);text-decoration:none}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-weight:600;z-index:2000;opacity:0;transition:opacity .2s}
+.toast.show{opacity:1}
+
+@media (max-width:900px){
+  .looks{grid-template-columns:minmax(0,1fr)}
+  .controls{grid-template-columns:minmax(0,1fr)}
+  .two,.shops,.hero{grid-template-columns:minmax(0,1fr)}
+  #map{height:320px}
+}
+@media (max-width:640px){ input,select,textarea{font-size:16px!important} }
+@media (max-width:420px){ .week{grid-template-columns:repeat(4,minmax(0,1fr))} .slots li{grid-template-columns:72px minmax(0,1fr)} }
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand"><h1>Style<span>cast</span></h1><span class="muted">dress for where you are</span></div>
+    <div class="top-actions">
+      <button class="btn primary" id="locBtn" type="button">◎ Use my location</button>
+      <form class="search" id="searchForm" autocomplete="off">
+        <input id="cityInput" type="search" placeholder="Or search a city…" aria-label="Search a city">
+        <div class="suggest" id="suggest" hidden></div>
+      </form>
+      <button class="btn" id="unitBtn" type="button" aria-label="Switch temperature unit">°C</button>
+    </div>
+  </header>
+
+  <section class="hero" aria-live="polite">
+    <div style="display:flex;flex-direction:column;gap:6px;z-index:1;min-width:0">
+      <span class="example" id="exampleTag" hidden>Example city · tap “Use my location”</span>
+      <span class="label" id="todayLabel">Today</span>
+      <div class="place" id="placeName">Finding you…</div>
+      <div style="display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap">
+        <div class="temp" id="tempNow">--°</div>
+        <div class="muted" id="feels" style="color:inherit;opacity:.8;padding-bottom:8px"></div>
+      </div>
+      <div class="hero-meta" id="heroMeta"></div>
+    </div>
+    <div class="hero-right">
+      <p class="verdict" id="verdict">Loading the weather to pick your outfits.</p>
+      <div>
+        <div class="label" style="margin-bottom:6px">Next 7 days</div>
+        <div class="week" id="week"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="controls" aria-label="Your preferences">
+    <div class="ctrl"><span class="label">I wear</span><div class="seg" data-key="wear"></div></div>
+    <div class="ctrl"><span class="label">Occasion</span><div class="seg" data-key="occasion"></div></div>
+    <div class="ctrl"><span class="label">Vibe</span><div class="seg" data-key="vibe"></div></div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:14px">
+    <div class="section-head">
+      <div><span class="label">Your looks for today</span><h2 id="looksTitle">Three ways to dress</h2></div>
+      <button class="btn" id="shuffleBtn" type="button">↻ Shuffle looks</button>
+    </div>
+    <div class="looks" id="looks"></div>
+  </section>
+
+  <section class="chat panel" id="stylist" aria-labelledby="chatTitle">
+    <div class="section-head" style="align-items:center">
+      <div><span class="label">Powered by Claude</span><h2 id="chatTitle">Ask your stylist</h2></div>
+      <div class="shop-bar">
+        <span class="status" id="chatKeyState"></span>
+        <button class="btn" type="button" id="keyToggle" aria-label="API key settings">⚿ Key</button>
+        <button class="btn" type="button" id="chatClear" hidden>New chat</button>
+      </div>
+    </div>
+    <div class="keybox" id="chatKeyBox" hidden>
+      <p><b>Connect your Anthropic API key.</b> The stylist runs on Claude using your own key, so you pay Anthropic directly for what you use (usually around a cent or two per message). Create a key at <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a> and set a monthly spend limit there.</p>
+      <form class="keyform" id="keyForm" autocomplete="off">
+        <input id="apiKey" type="password" placeholder="sk-ant-..." aria-label="Anthropic API key" spellcheck="false">
+        <button class="btn" type="button" id="keyShow">Show</button>
+        <button class="btn primary" type="submit">Save key</button>
+        <button class="btn" type="button" id="keyRemove">Remove key</button>
+      </form>
+      <p class="muted" style="font-size:13px">The key is stored only in this browser and sent only to Anthropic. Don't save it on a shared computer.</p>
+    </div>
+    <div class="chat-log" id="chatLog" aria-live="polite"></div>
+    <p class="status" id="chatLong" hidden>This chat is getting long. Tap “New chat” for faster, cheaper replies.</p>
+    <div class="seg" id="chatChips" aria-label="Suggested questions">
+      <button type="button">What should I wear today?</button>
+      <button type="button">Style one of my pieces three ways</button>
+      <button type="button">What's missing from my wardrobe this season?</button>
+      <button type="button">Help me pack for a 3-day trip</button>
+      <button type="button">What should I wear to a wedding here?</button>
+      <button type="button" data-photo="1">📷 Rate my outfit</button>
+    </div>
+    <div class="attach" id="chatAttachPreview" hidden></div>
+    <form class="chat-form" id="chatForm">
+      <label class="btn" for="chatPhoto" tabindex="0" aria-label="Attach a photo">📷</label>
+      <input type="file" id="chatPhoto" accept="image/*" hidden>
+      <textarea id="chatInput" rows="1" placeholder="Ask about outfits, colours, what to buy…" aria-label="Message your stylist"></textarea>
+      <button class="btn primary" type="submit" id="chatSend">Send</button>
+      <button class="btn" type="button" id="chatStop" hidden>Stop</button>
+    </form>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:14px" id="wardrobe">
+    <div class="section-head">
+      <div><span class="label">Your clothes</span><h2>My wardrobe</h2></div>
+      <div class="shop-bar">
+        <label class="btn primary" for="wardrobeFile" tabindex="0">＋ Add clothes</label>
+        <input type="file" id="wardrobeFile" accept="image/*" multiple hidden>
+        <button class="btn" type="button" id="wardExport">Back up</button>
+        <label class="btn" for="wardImport" tabindex="0">Restore</label>
+        <input type="file" id="wardImport" accept="application/json,.json" hidden>
+      </div>
+    </div>
+    <div class="seg" id="wardFilters" aria-label="Filter wardrobe"></div>
+    <p class="status" id="wardStatus">Loading your wardrobe…</p>
+    <div class="ward-grid" id="wardGrid"></div>
+  </section>
+
+  <section class="two">
+    <div class="panel">
+      <span class="label">Season palette</span>
+      <h3 id="paletteTitle">Colours that work now</h3>
+      <div class="palette" id="palette"></div>
+      <p class="muted" id="fabricNote" style="font-size:14px"></p>
+    </div>
+    <div class="panel">
+      <span class="label">Local style</span>
+      <h3 id="localTitle">Dressing like a local</h3>
+      <ul id="localNotes"></ul>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:14px">
+    <div class="section-head">
+      <div><span class="label">Shop near you</span><h2 id="shopsHeading">Clothes &amp; accessories nearby</h2></div>
+      <div class="shop-bar">
+        <label class="label" for="radius">Within</label>
+        <select id="radius">
+          <option value="1000">1 km</option>
+          <option value="3000" selected>3 km</option>
+          <option value="5000">5 km</option>
+          <option value="10000">10 km</option>
+        </select>
+        <button class="btn" id="shopBtn" type="button">Find shops</button>
+      </div>
+    </div>
+    <div class="panel brandbox">
+      <div class="section-head" style="align-items:center">
+        <div><span class="label">Find stores you like</span><h3>Brands near you</h3></div>
+        <div class="shop-bar">
+          <label class="label" for="brandRadius">Within</label>
+          <select id="brandRadius">
+            <option value="5000">5 km</option>
+            <option value="10000" selected>10 km</option>
+            <option value="25000">25 km</option>
+            <option value="50000">50 km</option>
+          </select>
+          <button class="btn primary" id="brandBtn" type="button">Find brands nearby</button>
+        </div>
+      </div>
+      <div class="seg" id="brandChips" aria-label="Brands to search"></div>
+      <form class="search" id="brandForm" autocomplete="off">
+        <input id="brandInput" list="brandList" placeholder="Add any brand, e.g. GU, Bershka, Bata" aria-label="Add a brand">
+        <datalist id="brandList"></datalist>
+        <button class="btn" type="submit">Add &amp; search</button>
+      </form>
+      <p class="status">Tap brands to select them. Store names in local scripts are matched too, such as ユニクロ for UNIQLO. <b>Check stock</b> opens the brand's own site: pick an item, then choose the store-availability option.</p>
+    </div>
+    <div class="seg" id="shopFilters" aria-label="Filter shops"></div>
+    <p class="status" id="shopStatus">Pick your location to see shops around you.</p>
+    <div class="shops">
+      <div id="map" role="region" aria-label="Map of nearby shops"></div>
+      <div class="shop-list" id="shopList"></div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:14px">
+    <div><span class="label">Saved on this device</span><h2>Saved looks</h2></div>
+    <div class="saved" id="saved"></div>
+  </section>
+
+  <footer>Weather by Open-Meteo · places &amp; map data © OpenStreetMap contributors · shop listings come from OpenStreetMap and may be incomplete, so check opening hours before you go.</footer>
+</div>
+<dialog id="itemDlg" aria-labelledby="dlgTitle">
+  <form id="itemForm" class="dlg">
+    <div class="dlg-img"><img id="dlgImg" alt="Photo of the item"></div>
+    <div class="dlg-fields">
+      <h3 id="dlgTitle">Add to wardrobe</h3>
+      <label class="label" for="itemName">Name</label>
+      <input id="itemName" type="text" maxlength="60">
+      <span class="label">Type</span><div class="seg" id="dlgCat"></div>
+      <span class="label">Warmth</span><div class="seg" id="dlgWarm"></div>
+      <span class="label">Good for (pick any)</span><div class="seg" id="dlgStyles"></div>
+      <label class="label" for="itemColor">Main colour</label>
+      <div class="colorrow"><input type="color" id="itemColor"><span id="colorName"></span><span class="muted" style="font-size:12px">Detected from the photo. Tap to adjust.</span></div>
+      <div class="dlg-foot">
+        <span id="dlgCount" class="muted"></span>
+        <button type="button" class="btn" id="dlgAI" hidden>✦ Auto-tag with AI</button>
+        <button type="button" class="btn" id="dlgDelete">Delete</button>
+        <button type="button" class="btn" id="dlgSkip">Skip</button>
+        <button type="submit" class="btn primary">Save</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+<a class="btn primary ask-fab" href="#stylist" id="askFab">✦ Ask stylist</a>
+<div class="toast" id="toast" role="status"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+"use strict";
+/* ================= helpers ================= */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem("stylecast:"+k); return v ? JSON.parse(v) : d; }catch{ return d; } },
+  set(k, v){ try{ localStorage.setItem("stylecast:"+k, JSON.stringify(v)); }catch{} }
+};
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove("show"),2200); }
+function rng(seed){ let a = seed >>> 0; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function pick(arr, r){ return arr.length ? arr[Math.floor(r()*arr.length)] : null; }
+function km(a,b,c,d){ const R=6371, t=x=>x*Math.PI/180; const dl=t(c-a), dn=t(d-b); const h=Math.sin(dl/2)**2+Math.cos(t(a))*Math.cos(t(c))*Math.sin(dn/2)**2; return 2*R*Math.asin(Math.sqrt(h)); }
+
+/* ================= state ================= */
+const state = {
+  place: null, weather: null, unit: store.get("unit","C"),
+  wear: store.get("wear","either"), occasion: store.get("occasion","everyday"), vibe: store.get("vibe","classic"),
+  seed: Math.floor(Math.random()*1e6), shops: [], shopFilter: "all", looks: []
+};
+
+const OPTIONS = {
+  wear: [["menswear","Menswear"],["womenswear","Womenswear"],["either","Anything"]],
+  occasion: [["everyday","Everyday"],["work","Work"],["date","Date night"],["party","Party"],["wedding","Wedding / formal"],["worship","Worship"],["gym","Gym"],["travel","Travel"]],
+  vibe: [["classic","Classic"],["minimal","Minimal"],["bold","Bold"],["street","Streetwear"],["traditional","Traditional"]]
+};
+
+/* ================= weather ================= */
+const WMO = c => c===0?["Clear","sun"]:c<=2?["Partly cloudy","sun"]:c===3?["Overcast","cloud"]:c<=48?["Foggy","cloud"]:c<=57?["Drizzle","rain"]:c<=67?["Rain","rain"]:c<=77?["Snow","snow"]:c<=82?["Showers","rain"]:c<=86?["Snow showers","snow"]:["Thunderstorms","rain"];
+// Feels-like bands in °C: F freezing, C cold, K cool, M mild, W warm, H hot
+const band = t => t<2?"F":t<9?"C":t<16?"K":t<22?"M":t<28?"W":"H";
+const BAND_NAME = {F:"freezing",C:"cold",K:"cool",M:"mild",W:"warm",H:"hot"};
+const dayHint = (t,c) => { const w=WMO(c)[1]; if(w==="snow") return "Boots"; if(w==="rain") return "Umbrella"; return {F:"Parka",C:"Coat",K:"Jacket",M:"Light layer",W:"Tee",H:"Linen"}[band(t)]; };
+const fmtT = c => state.unit==="C" ? Math.round(c)+"°" : Math.round(c*9/5+32)+"°";
+
+async function getJSON(url, opts){
+  const r = await fetch(url, opts);
+  if(!r.ok) throw new Error("HTTP "+r.status);
+  return r.json();
+}
+async function loadWeather(lat, lon){
+  const u = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,uv_index&daily=weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,precipitation_sum,precipitation_probability_max,uv_index_max&timezone=auto&forecast_days=7`;
+  return getJSON(u);
+}
+
+/* ================= season ================= */
+const WEST_AFRICA = ["NG","GH","BJ","TG","CI","SN","ML","BF","NE","GM","GN","SL","LR","CM","TD"];
+function season(lat, cc, weather){
+  const m = new Date().getMonth(); // 0-11
+  if(Math.abs(lat) < 23.5){
+    const rain = weather ? weather.daily.precipitation_sum.reduce((a,b)=>a+(b||0),0) : 0;
+    if(WEST_AFRICA.includes(cc) && (m===11||m<=1) && lat>4) return {key:"harmattan", name:"Harmattan season", note:"Dry, dusty air and cool mornings. Layer a light piece you can drop by noon, and keep lips and skin moisturised."};
+    return rain > 25 ? {key:"wet", name:"Rainy season", note:"Wet and humid. Pick quick-dry fabrics, darker colours that hide splashes, and shoes that handle puddles."}
+                     : {key:"dry", name:"Dry season", note:"Hot and bright. Loose natural fibres, light colours and sun protection do the work."};
+  }
+  const north = lat >= 0;
+  const s = [ "winter","winter","spring","spring","spring","summer","summer","summer","autumn","autumn","autumn","winter" ][m];
+  const flip = {winter:"summer",summer:"winter",spring:"autumn",autumn:"spring"};
+  const k = north ? s : flip[s];
+  const notes = {
+    winter:"Build warmth in layers: a base, an insulating middle and a wind-proof outer you can remove indoors.",
+    spring:"Changeable days. A light jacket or trench over breathable layers covers chilly mornings and warm afternoons.",
+    summer:"Choose breathable fabrics like linen and cotton, loose cuts and lighter colours that reflect the sun.",
+    autumn:"Bring back knits and boots. Rich earthy colours and textured fabrics such as suede, corduroy and wool suit the season."
+  };
+  return {key:k, name: k[0].toUpperCase()+k.slice(1), note: notes[k]};
+}
+
+/* ================= palettes ================= */
+const PALETTES = {
+  winter:[["Charcoal","#3b3b40"],["Camel","#b9894f"],["Burgundy","#6d1f2b"],["Forest","#2f4a3a"],["Ivory","#efe8dc"],["Navy","#1f2a44"]],
+  spring:[["Sage","#a8b89a"],["Blush","#e9b8b1"],["Butter","#f1dd94"],["Sky","#a9c8e6"],["Stone","#d6cfc2"],["Lilac","#c3b3dd"]],
+  summer:[["White","#fbfbf8"],["Sand","#e2cfaa"],["Coral","#f07b62"],["Aqua","#5fc0c0"],["Lemon","#f5e05a"],["Chambray","#7e9cc4"]],
+  autumn:[["Rust","#a3492a"],["Olive","#6b6b33"],["Mustard","#c9972c"],["Chocolate","#4e3426"],["Cream","#efe4cc"],["Teal","#2c6a6b"]],
+  dry:[["Off-white","#f5f2ea"],["Khaki","#c8b98f"],["Sky blue","#9cc6e3"],["Terracotta","#c46a47"],["Mint","#a9dcc3"],["Gold","#d9a93a"]],
+  wet:[["Navy","#1f2a44"],["Olive","#5d6a3a"],["Teal","#24686a"],["Charcoal","#3b3b40"],["Plum","#5e3555"],["Mustard","#c9972c"]],
+  harmattan:[["Ochre","#c58b2a"],["Earth","#7a5236"],["Indigo","#2e3a73"],["Cream","#efe4cc"],["Rust","#a3492a"],["Bronze","#8c6a3c"]]
+};
+const VIBE_PAL = {
+  minimal:[["Black","#161616"],["White","#fafafa"],["Grey","#9a9a9e"],["Oatmeal","#ddd2bf"]],
+  bold:[["Cobalt","#2342d8"],["Fuchsia","#d6248f"],["Emerald","#159a62"],["Tangerine","#f2741c"]]
+};
+function paletteFor(seasonKey, vibe){
+  const base = PALETTES[seasonKey] || PALETTES.spring;
+  if(VIBE_PAL[vibe]) return [...VIBE_PAL[vibe].slice(0,3), ...base.slice(0,3)];
+  return base;
+}
+const FABRICS = { F:"Wool, down, fleece and thermal knits. Avoid cotton as a base layer in the cold, because it stays damp.", C:"Wool, cashmere, flannel, heavy denim and corduroy.", K:"Merino, light wool, denim, suede and cotton twill.", M:"Cotton, chambray, light knits and jersey.", W:"Cotton, linen blends, seersucker and lightweight denim.", H:"Linen, cotton voile, seersucker and breathable technical fabrics. Pick loose cuts." };
+
+/* ================= item catalogue =================
+   [name, bands, styles, wear]  styles: c casual, s smart, f formal, a athletic, x street. wear: m, f, n(anyone) */
+const ITEMS = {
+  top:[
+    ["White crew-neck cotton tee","MWH","cx","n"],["Linen camp-collar shirt","WH","cs","n"],["Knit polo shirt","MWH","cs","n"],
+    ["Oxford button-down shirt","KMW","sc","n"],["Crisp poplin dress shirt","CKMWH","fs","m"],["Silk or satin blouse","KMW","sf","f"],
+    ["Fitted ribbed knit top","KM","cs","f"],["Merino crew-neck sweater","CK","cs","n"],["Chunky cable-knit sweater","FC","c","n"],
+    ["Thermal base layer under a flannel shirt","FC","cx","n"],["Fine-knit turtleneck","FCK","sf","n"],["Oversized graphic tee","MWH","x","n"],
+    ["Heavyweight hoodie","CK","xc","n"],["Moisture-wicking training tee","KMWH","a","n"],["Thermal long-sleeve training top","FC","a","n"],
+    ["Sleeveless linen top","WH","cs","f"],["Loose cotton tank","H","cx","n"],["Mock-neck long-sleeve tee","KM","xs","n"],
+    ["Lightweight cotton shirt (sleeves rolled)","WH","s","n"],["Silk-blend camisole","WH","sf","f"],["Boxy short-sleeve shirt","WH","x","n"],
+    ["Sports bra with an open-back tank","MWH","a","f"],["Fleece-lined crewneck sweatshirt","FC","xc","n"]
+  ],
+  onepiece:[
+    ["Midi slip dress","MWH","sf","f"],["Linen shirt dress","WH","cs","f"],["Knit sweater dress with opaque tights","FCK","cs","f"],
+    ["Wrap dress","MW","sc","f"],["Tailored jumpsuit","KMW","sf","f"],["Cocktail dress or floor-length gown","KMWH","f","f"],
+    ["Cotton sundress","WH","c","f"],["Wool pinafore over a turtleneck","CK","cs","f"]
+  ],
+  bottom:[
+    ["Relaxed linen trousers","WH","cs","n"],["Tailored chinos","KMW","sc","n"],["Dark straight-leg jeans","CKM","cx","n"],
+    ["Light-wash jeans","MW","cx","n"],["Wool trousers","FCK","sf","n"],["Suit trousers (matching the jacket)","CKMWH","f","n"],
+    ["Cotton shorts (5–7 inch inseam)","WH","c","n"],["Cargo pants","CKM","x","n"],["Wide-leg pleated trousers","KMWH","sx","n"],
+    ["Pleated midi skirt","KMW","sc","f"],["Denim skirt","MWH","cx","f"],["Fleece-lined leggings","FC","ca","f"],
+    ["Tapered joggers","CKM","axc","n"],["Training shorts","MWH","a","n"],["Lined thermal trousers","F","c","n"],
+    ["Satin midi skirt","MW","sf","f"],["Parachute pants","KMW","x","n"],["Lightweight tailored trousers","WH","sf","n"]
+  ],
+  layer:[
+    ["Unstructured blazer","KMW","s","n"],["Tailored suit jacket","CKMWH","f","n"],["Light cardigan","KM","cs","n"],
+    ["Denim jacket","KM","cx","n"],["Quilted gilet","CK","cx","n"],["Overshirt (shacket)","KM","cx","n"],["Zip fleece","CK","ac","n"],
+    ["Cropped tweed jacket","CK","s","f"],["Varsity jacket","KM","x","n"]
+  ],
+  outer:[
+    ["Insulated down parka","F","csfax","n"],["Wool overcoat","C","sfc","n"],["Puffer jacket","FC","cxa","n"],
+    ["Trench coat","KM","sc","n"],["Bomber jacket","K","xc","n"],["Leather jacket","K","xc","n"],["Windbreaker","KM","a","n"],
+    ["Long wool coat","CK","sf","n"]
+  ],
+  shoes:[
+    ["White leather sneakers","KMW","csx","n"],["Canvas sneakers","MWH","cx","n"],["Leather loafers","KMWH","sc","n"],
+    ["Oxford or derby shoes","CKMWH","fs","m"],["Block-heel pumps","KMWH","fs","f"],["Strappy heeled sandals","WH","sf","f"],
+    ["Leather slides or sandals","WH","c","n"],["Chelsea boots","CK","scx","n"],["Insulated waterproof boots","F","csfax","n"],
+    ["Chunky retro sneakers","KMW","x","n"],["Running shoes","FCKMWH","a","n"],["Espadrilles","WH","cs","n"],
+    ["Leather ankle boots","CK","cs","f"],["Suede desert boots","KM","cs","n"],["Ballet flats","MW","sc","f"],["Mules","MWH","s","f"]
+  ]
+};
+const STYLE_ACC = {
+  c:["Crossbody bag","Canvas tote","Minimal watch","Simple chain necklace","Baseball cap"],
+  s:["Leather belt matched to your shoes","Structured leather tote","Minimal watch","Small stud earrings|f","Leather card holder","Silk scarf|f","Slim leather briefcase|m"],
+  f:["Silk tie or pocket square|m","Clutch bag|f","Dress watch","Cufflinks|m","Pearl or drop earrings|f","Leather belt matched to your shoes"],
+  a:["Sweat-wicking cap","Sport watch or fitness band","Gym duffel","Insulated water bottle"],
+  x:["Bucket hat","Chain necklace","Mini backpack","Sling bag","Statement socks"]
+};
+const OCC_STYLE = { everyday:"c", work:"s", date:"s", party:"x", wedding:"f", worship:"s", gym:"a", travel:"c" };
+
+/* ================= local style ================= */
+const LOCAL = {
+  NG:{ notes:["Ankara prints are everyday wear and dress up easily for church or parties.","For owambe and weddings, aso-ebi (matching fabric chosen by the celebrants) is expected, so ask the host for the colour.","Lagos heat calls for breathable cotton and linen. Save heavy fabrics like aso-oke for indoor, air-conditioned events.","A good tailor is part of the wardrobe. Buy fabric at the market and have it sewn to fit."],
+       trad:{m:["Senator kaftan and matching trousers","Agbada with fila cap","Buba and sokoto in Ankara or adire"],f:["Iro and buba with a gele","Ankara peplum top with a fitted skirt","Adire kaftan dress"]}},
+  GH:{ notes:["Kente is for big occasions such as weddings, festivals and funerals (each has its own colours).","Friday wear: many offices encourage African prints on Fridays.","Choose light cotton for Accra's humid heat."], trad:{m:["Fugu (smock) with trousers","Kente stole over a white shirt"],f:["Kaba and slit in wax print","Kente wrap dress"]}},
+  KE:{ notes:["Kitenge prints work for both casual and smart looks.","Nairobi is high altitude, so mornings and evenings are cool. Carry a light layer.","Maasai beadwork makes a strong accessory."], trad:{m:["Kitenge shirt with chinos","Shuka worn as a wrap or scarf"],f:["Kitenge maxi dress","Kanga wrap with a fitted top"]}},
+  ZA:{ notes:["Shweshwe prints are a proudly local choice for events.","Cape Town wind is no joke: favour structured pieces over flowy ones on windy days.","Madiba shirts are smart enough for many formal settings."], trad:{m:["Madiba shirt with tailored trousers","Shweshwe shirt"],f:["Shweshwe flared dress","Xhosa-inspired beaded collar with a simple dress"]}},
+  ET:{ notes:["Habesha kemis, in white cotton with woven tibeb borders, is worn for holidays and church.","Addis is high altitude, so expect cool evenings."], trad:{m:["Habesha suit with a netela shawl"],f:["Habesha kemis with a netela"]}},
+  IN:{ notes:["Cotton and khadi work for most of the year. Save silks for weddings and festivals.","Wedding guests usually avoid all-white and all-black, and bright colours are welcome.","Cover shoulders and knees when visiting temples."], trad:{m:["Cotton kurta with churidar or jeans","Nehru jacket over a kurta","Sherwani for weddings"],f:["Saree in cotton or silk","Anarkali or salwar kameez","Lehenga for weddings"]}},
+  PK:{ notes:["Shalwar kameez is everyday and formal wear. Lawn cotton is the summer favourite.","Embroidered, heavier fabrics come out for wedding season (winter)."], trad:{m:["Shalwar kameez with a waistcoat","Sherwani for weddings"],f:["Lawn shalwar kameez with a dupatta","Embroidered gharara for weddings"]}},
+  BD:{ notes:["Cotton and muslin suit the humid heat.","Bright colours are popular at Pohela Boishakh and weddings."], trad:{m:["Panjabi with pyjama trousers"],f:["Jamdani or cotton saree","Salwar kameez"]}},
+  AE:{ notes:["Malls and offices are strongly air-conditioned. Carry a light layer even in summer.","Modest dress is respected: covered shoulders and knees in public places and religious sites.","Linen and cotton are best outdoors in summer heat."], trad:{m:["Kandura with ghutra"],f:["Abaya over a simple outfit"]}},
+  SA:{ notes:["Modest dress is the norm in public.","Loose, breathable fabrics are best for the heat."], trad:{m:["Thobe with shemagh"],f:["Abaya, in colour or black"]}},
+  QA:{ notes:["Modest dress is the norm in public; bring a layer for the air conditioning."], trad:{m:["Thobe with ghutra"],f:["Abaya"]}},
+  EG:{ notes:["Loose linen and cotton are best for the heat.","Dress modestly at mosques and in more traditional areas."], trad:{m:["Galabeya for relaxed occasions"],f:["Embroidered kaftan"]}},
+  JP:{ notes:["Neat, layered and well-fitted beats loud. Clean shoes matter (you will often take them off).","Summer is humid: choose breathable fabrics and carry a small towel handkerchief.","Yukata are worn at summer festivals and fireworks."], trad:{m:["Yukata at summer festivals"],f:["Yukata with an obi at summer festivals"]}},
+  KR:{ notes:["Seoul style is polished and trend-aware. Oversized coats and clean sneakers are staples.","Winters are sharp and dry, so a long padded coat is the local uniform."], trad:{m:["Modern hanbok jacket"],f:["Modern hanbok skirt or dress"]}},
+  CN:{ notes:["Big cities lean polished and minimal, with modern takes on traditional details.","Red is lucky and welcome at weddings and New Year, but guests usually avoid wearing white to weddings."], trad:{m:["Tang jacket"],f:["Qipao (cheongsam)"]}},
+  ID:{ notes:["Batik shirts are accepted as formal wear, including at weddings and offices.","Choose light, breathable fabrics for the humidity."], trad:{m:["Long-sleeve batik shirt"],f:["Kebaya with a batik skirt"]}},
+  MY:{ notes:["Batik works for smart events.","Dress modestly at mosques and temples."], trad:{m:["Baju Melayu"],f:["Baju kurung"]}},
+  PH:{ notes:["The barong Tagalog is formal wear for men and works in the heat.","Light, breathable fabrics are essential most of the year."], trad:{m:["Barong Tagalog"],f:["Filipiniana with butterfly sleeves"]}},
+  MX:{ notes:["Guayaberas are cool and smart in the heat.","Embroidered huipiles pair well with jeans for a local touch.","Mexico City is high altitude, with cool mornings and warm afternoons."], trad:{m:["Guayabera shirt"],f:["Embroidered huipil blouse"]}},
+  GB:{ notes:["A waterproof layer is never a bad idea; showers come and go.","Smart-casual covers most places: dark jeans, a knit and clean leather shoes.","Trench coats and wool coats are the city staples."]},
+  US:{ notes:["Dress codes vary hugely by city. Coastal cities lean casual-smart, and the South dresses up for church and events.","Air-conditioning is strong, so bring a light layer indoors in summer."]},
+  CA:{ notes:["Winter means proper insulated boots and a parka. Locals dress for function first.","Layering is key in spring and autumn, when days can swing 15°."]},
+  FR:{ notes:["Parisians favour a small set of quality basics: tailored coat, well-cut denim, good shoes.","Neutral colours with one accent piece, such as a scarf or bag, read as effortlessly local."]},
+  IT:{ notes:["Fit and fabric quality matter more than labels. Tailoring is everywhere.","Cover shoulders and knees for churches, including the Vatican."]},
+  ES:{ notes:["Evenings start late and people dress up a little to go out.","Espadrilles and linen are summer classics."]},
+  DE:{ notes:["Practical and minimal. Quality outerwear and good walking shoes are the norm.","Berlin leans dark and street; Munich is more classic."]},
+  BR:{ notes:["Light, bright and body-conscious in the heat. Havaianas are everyday footwear.","São Paulo leans more urban and polished than Rio."]},
+  TR:{ notes:["Istanbul is stylish and polished. Dress modestly when visiting mosques (women should bring a scarf)."]},
+  AU:{ notes:["Strong sun: hats, UV-rated sunglasses and SPF are part of the outfit.","Melbourne weather changes fast, so carry a layer."]}
+};
+const LOCAL_DEFAULT = { notes:["Watch what locals wear on the street. It is the best guide to the dress code.","Cover shoulders and knees when visiting religious sites.","When in doubt for an event, dress one notch smarter than you think."]};
+
+/* ================= outfit engine ================= */
+function fits(item, b, style, wear){
+  const [, bands, styles, w] = item;
+  if(!bands.includes(b)) return false;
+  if(!styles.includes(style)) return false;
+  if(wear==="menswear" && w==="f") return false;
+  if(wear==="womenswear" && w==="m") return false;
+  return true;
+}
+function choose(slot, b, style, wear, r, used){
+  let pool = ITEMS[slot].filter(i => fits(i,b,style,wear) && !used.has(i[0]));
+  if(!pool.length){ // relax style, then band
+    const nearBands = {F:"FC",C:"FCK",K:"CKM",M:"KMW",W:"MWH",H:"WH"}[b];
+    pool = ITEMS[slot].filter(i => [...nearBands].some(nb => fits(i,nb,style,wear)) && !used.has(i[0]));
+  }
+  if(!pool.length) pool = ITEMS[slot].filter(i => i[1].includes(b) && !used.has(i[0]) && !(wear==="menswear"&&i[3]==="f") && !(wear==="womenswear"&&i[3]==="m"));
+  if(!pool.length) pool = ITEMS[slot].filter(i => i[1].includes(b) && i[2].includes(style) && !(wear==="menswear"&&i[3]==="f") && !(wear==="womenswear"&&i[3]==="m"));
+  const it = pick(pool, r); if(it) used.add(it[0]); return it ? it[0] : null;
+}
+function buildLooks(){
+  const w = state.weather; if(!w) return [];
+  const cur = w.current, d = w.daily;
+  const feels = cur.apparent_temperature, hi = d.apparent_temperature_max[0];
+  const b = band(feels), bHi = band(hi);
+  const wet = (d.precipitation_probability_max[0] ?? 0) >= 50 || WMO(cur.weather_code)[1]==="rain";
+  const snowy = WMO(cur.weather_code)[1]==="snow";
+  const sunny = (d.uv_index_max[0] ?? 0) >= 6;
+  const windy = cur.wind_speed_10m >= 30;
+  const r = rng(state.seed);
+  let style = OCC_STYLE[state.occasion];
+  if(state.vibe==="street" && (style==="c")) style = "x";
+  const cc = state.place?.cc;
+  const local = LOCAL[cc];
+  const looks = [];
+  const pal = paletteFor(season(state.place.lat, cc, w).key, state.vibe);
+
+  // A traditional look first when asked for, and the place has one
+  if(state.vibe==="traditional" && local?.trad && state.occasion!=="gym"){
+    const opts = state.wear==="menswear" ? local.trad.m : state.wear==="womenswear" ? local.trad.f : [...local.trad.m, ...local.trad.f];
+    const main = pick(opts, r);
+    const used = new Set();
+    looks.push({ title:"Local traditional", trad:true, slots:[
+      ["Outfit", main],
+      ["Shoes", choose("shoes", bHi, style==="a"?"c":style, state.wear, r, used) || "Leather sandals or loafers"],
+      ["Accessories", (state.wear==="menswear"?"Matching cap or a simple wristwatch":"Statement earrings and a matching clutch") + (sunny?" · sunglasses":"")],
+      ...(b==="F"||b==="C"||b==="K" ? [["Layer", "Pashmina or a tailored coat over the top"]] : [])
+    ], colors: pick([[0,2,4],[1,3,5],[0,3,5]], r).map(i => pal[i]), tip: tipFor(b,bHi,wet,sunny,windy,snowy,true) });
+  }
+
+  const labels = { c:["Easy day","Relaxed","Weekend"], s:["Polished","Sharp","Smart-casual"], f:["Black tie-ready","Formal","Elegant"], a:["Training","Active","Outdoor run"], x:["Street","Off-duty","Night out"] };
+  let i = 0; const across = new Set();
+  while(looks.length < 3){
+    const used = new Set(across);
+    const slots = [];
+    const canDress = state.wear!=="menswear" && style!=="a" && ITEMS.onepiece.some(it => fits(it,b,style,state.wear) || fits(it,bHi,style,state.wear));
+    const useDress = canDress && (state.wear==="womenswear" ? r() < 0.45 : r() < 0.25);
+    if(useDress){
+      const dress = choose("onepiece", ITEMS.onepiece.some(it=>fits(it,b,style,state.wear)) ? b : bHi, style, state.wear, r, used);
+      slots.push(["Outfit", dress]);
+    } else {
+      slots.push(["Top", choose("top", b, style, state.wear, r, used)]);
+      slots.push(["Bottom", choose("bottom", bHi==="H"||bHi==="W" ? (b==="K"?"M":bHi) : b, style, state.wear, r, used)]);
+    }
+    if("KC".includes(b) || (style==="s"||style==="f") && "KM".includes(b) || style==="f"){
+      const layer = choose("layer", b==="H"?"W":b==="F"?"C":b, style, state.wear, r, used);
+      if(layer) slots.push(["Layer", layer]);
+    }
+    if("FCK".includes(b)){
+      const outer = choose("outer", b, style, state.wear, r, used);
+      if(outer) slots.push(["Outerwear", outer]);
+    }
+    if(wet && !"FC".includes(b)) slots.push(["Rain", b==="H"||b==="W" ? "Packable rain jacket or a compact umbrella" : "Waterproof shell jacket"]);
+    slots.push(["Shoes", snowy ? "Insulated waterproof boots" : wet && style!=="f" ? (style==="a"?"Trail running shoes with grip":"Water-resistant leather boots or rubber-soled sneakers") : choose("shoes", b, style, state.wear, r, used)]);
+    const acc = [];
+    if("FC".includes(b)) acc.push(pick(["Wool beanie","Knit scarf","Touchscreen gloves"], r), "Warm socks");
+    if(sunny) acc.push(b==="H" && (style==="c"||style==="x") ? "Wide-brim hat & UV400 sunglasses" : "UV400 sunglasses");
+    const sa = STYLE_ACC[style].filter(x => !(state.wear==="menswear"&&x.endsWith("|f")) && !(state.wear==="womenswear"&&x.endsWith("|m"))).map(x=>x.replace(/\|[mf]$/,""));
+    while(acc.length < 3 && sa.length){ const x = sa.splice(Math.floor(r()*sa.length),1)[0]; if(!acc.includes(x)) acc.push(x); }
+    slots.push(["Accessories", acc.join(" · ")]);
+    const ci = [[0,4,2],[5,1,3],[3,0,5],[2,4,1]][(i + Math.floor(r()*4))%4];
+    slots.forEach(([,v]) => across.add(v));
+    looks.push({ title: labels[style][i%3], slots: slots.filter(s=>s[1]), colors: ci.map(k => pal[k % pal.length]), tip: tipFor(b,bHi,wet,sunny,windy,snowy,false,style) });
+    i++;
+  }
+  return looks;
+}
+function tipFor(b,bHi,wet,sunny,windy,snowy,trad,style){
+  const t = [];
+  if(b!==bHi && "FCK".includes(b) && "MWH".includes(bHi)) t.push(`It warms up to ${BAND_NAME[bHi]} later, so pick layers you can take off and carry.`);
+  if(wet) t.push("Rain is likely. Skip suede and long hems that drag.");
+  if(snowy) t.push("Snow today. Grip soles beat style soles.");
+  if(windy) t.push("It's windy: skip flowy skirts and wide hats, and zip up.");
+  if(sunny) t.push("High UV. Wear sunscreen even if it's cloudy.");
+  if(trad) t.push("Match the fabric weight to the venue: heavier fabrics for air-conditioned halls, cotton for outdoor parties.");
+  if(style==="f" && "WH".includes(b)) t.push("Formal in the heat: choose a lighter, unlined jacket in linen or tropical wool.");
+  if(style==="a") t.push("Dress as if it's 5–8° warmer than it is; you'll heat up fast.");
+  if(!t.length) t.push("Keep it to three colours at most, and repeat one of them in your accessories.");
+  return t.slice(0,2).join(" ");
+}
+
+/* ================= rendering ================= */
+function renderControls(){
+  document.querySelectorAll(".seg[data-key]").forEach(seg => {
+    const key = seg.dataset.key;
+    seg.innerHTML = OPTIONS[key].map(([v,l]) => `<button type="button" data-v="${v}" aria-pressed="${state[key]===v}">${l}</button>`).join("");
+    seg.onclick = e => { const b = e.target.closest("button"); if(!b) return; state[key] = b.dataset.v; store.set(key, state[key]); renderControls(); renderLooks(); renderLocal(); };
+  });
+}
+function renderWeather(){
+  const w = state.weather, p = state.place;
+  $("#placeName").textContent = p.name;
+  $("#exampleTag").hidden = !p.example;
+  $("#todayLabel").textContent = new Date().toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"long"}) + (p.country ? " · " + p.country : "");
+  if(!w) return;
+  const c = w.current, d = w.daily, [cond] = WMO(c.weather_code);
+  const s = season(p.lat, p.cc, w);
+  $("#tempNow").textContent = fmtT(c.temperature_2m);
+  $("#feels").textContent = `Feels like ${fmtT(c.apparent_temperature)} · H ${fmtT(d.temperature_2m_max[0])} L ${fmtT(d.temperature_2m_min[0])}`;
+  $("#heroMeta").innerHTML = [
+    `<span class="pill season">${esc(s.name)}</span>`,
+    `<span class="pill">${esc(cond)}</span>`,
+    `<span class="pill">Rain ${d.precipitation_probability_max[0] ?? 0}%</span>`,
+    `<span class="pill">Wind ${Math.round(c.wind_speed_10m)} km/h</span>`,
+    `<span class="pill">UV ${Math.round(d.uv_index_max[0] ?? 0)}</span>`,
+    `<span class="pill">Humidity ${c.relative_humidity_2m}%</span>`
+  ].join("");
+  const b = band(c.apparent_temperature);
+  const verdicts = {F:"Bundle up. It's properly freezing, so think insulation and covered skin.",C:"Coat weather. Layer a knit under a warm outer layer.",K:"Cool out there. A jacket or a solid layer is your friend.",M:"Mild and easy. One light layer and you're set.",W:"Warm. Breathable fabrics and short sleeves.",H:"Hot. Go loose, light and linen, and stay in the shade."};
+  $("#verdict").textContent = verdicts[b] + " " + s.note;
+  $("#week").innerHTML = d.time.map((t,i) => {
+    const dt = new Date(t+"T12:00");
+    return `<div class="day">${i===0?"Today":dt.toLocaleDateString(undefined,{weekday:"short"})}<b>${fmtT(d.temperature_2m_max[i])}</b><span style="opacity:.7">${fmtT(d.temperature_2m_min[i])}</span><i>${dayHint(d.apparent_temperature_max[i], d.weather_code[i])}</i></div>`;
+  }).join("");
+}
+function lookCard(l, idx, saved){
+  return `<article class="look">
+    <div class="look-head">
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <span class="look-num">${saved ? esc(l.when) : "Look " + String(idx+1).padStart(2,"0")}</span>
+        <h3>${esc(l.title)}</h3>
+        ${l.ward ? `<span class="tag ward">Your clothes</span>` : l.trad ? `<span class="tag trad">Traditional</span>` : saved ? `<span class="tag">${esc(l.ctx||"")}</span>` : ""}
+      </div>
+      <div class="swatches">${l.colors.map(([n,h]) => `<span class="sw" style="background:${h}" title="${esc(n)}"></span>`).join("")}</div>
+    </div>
+    <ul class="slots">${l.slots.map(([k,v,img,miss]) => `<li><span class="label">${esc(k)}</span><span class="slot-v${miss?" miss":""}">${img ? `<img class="thumb" src="${esc(img)}" alt="">` : ""}<span>${miss ? "Missing: " : ""}${esc(v)}</span></span></li>`).join("")}</ul>
+    <p class="tip"><b style="color:var(--ink)">Colours:</b> ${l.colors.map(c=>esc(c[0])).join(", ")}. ${esc(l.tip)}${!saved && !l.trad && !l.ward && state.selBrands?.length ? `<br><b style="color:var(--ink)">Shop it at:</b> ${state.selBrands.map(b => `<a href="${esc(stockUrl(b))}" target="_blank" rel="noopener" title="${esc(stockTitle(b))}">${esc(b)}</a>`).join(", ")}` : ""}</p>
+    <div class="look-foot">${saved
+      ? `<button class="btn" type="button" data-del="${idx}">Remove</button>`
+      : `${l.ward && l.itemIds?.length ? `<button class="btn primary" type="button" data-wore="${idx}">✓ Wearing this</button>` : ""}<button class="btn" type="button" data-save="${idx}">♡ Save look</button><button class="btn" type="button" data-copy="${idx}">Copy</button>`}</div>
+  </article>`;
+}
+function renderLooks(){
+  if(!state.weather){ $("#looks").innerHTML = `<div class="empty">Outfits appear once the weather loads.</div>`; return; }
+  state.looks = buildLooks();
+  const wl = state.wardrobe?.length >= 2 ? buildWardrobeLook() : null;
+  if(wl) state.looks = [wl, ...state.looks].slice(0,3);
+  const occ = OPTIONS.occasion.find(o=>o[0]===state.occasion)[1];
+  $("#looksTitle").textContent = `${occ} looks for ${fmtT(state.weather.current.apparent_temperature)} and ${WMO(state.weather.current.weather_code)[0].toLowerCase()}`;
+  $("#looks").innerHTML = state.looks.map((l,i) => lookCard(l,i,false)).join("");
+  const s = season(state.place.lat, state.place.cc, state.weather);
+  const pal = paletteFor(s.key, state.vibe);
+  $("#paletteTitle").textContent = `${s.name} colours${VIBE_PAL[state.vibe] ? " with a "+state.vibe+" twist" : ""}`;
+  $("#palette").innerHTML = pal.map(([n,h]) => `<div class="pal"><div style="background:${h}"></div><b>${esc(n)}</b><code>${h}</code></div>`).join("");
+  $("#fabricNote").innerHTML = `<b style="color:var(--ink)">Best fabrics right now:</b> ${esc(FABRICS[band(state.weather.current.apparent_temperature)])}`;
+}
+function renderLocal(){
+  const p = state.place; if(!p) return;
+  const L = LOCAL[p.cc] || LOCAL_DEFAULT;
+  $("#localTitle").textContent = p.country ? `Dressing like a local in ${p.country}` : "Dressing like a local";
+  const notes = [...L.notes];
+  if(L.trad){
+    const t = state.wear==="menswear" ? L.trad.m : state.wear==="womenswear" ? L.trad.f : [...L.trad.m, ...L.trad.f];
+    notes.push("Local pieces to try: " + t.join(", ") + ". Choose the “Traditional” vibe to build a look around one.");
+  }
+  $("#localNotes").innerHTML = notes.map(n => `<li>${esc(n)}</li>`).join("");
+}
+function renderSaved(){
+  const saved = store.get("saved", []);
+  $("#saved").innerHTML = saved.length ? saved.map((l,i)=>lookCard(l,i,true)).join("") : `<div class="empty">Tap “Save look” on an outfit to keep it here.</div>`;
+}
+document.addEventListener("click", e => {
+  const s = e.target.closest("[data-save]"), c = e.target.closest("[data-copy]"), d = e.target.closest("[data-del]");
+  if(s){ const l = state.looks[+s.dataset.save]; const saved = store.get("saved", []);
+    saved.unshift({...l, slots: l.slots.map(([k,v,,m]) => [k, m ? "Missing: "+v : v]), itemIds: undefined, when: new Date().toLocaleDateString(undefined,{day:"numeric",month:"short"}) + " · " + state.place.name, ctx: `${OPTIONS.occasion.find(o=>o[0]===state.occasion)[1]} · ${fmtT(state.weather.current.apparent_temperature)}`});
+    store.set("saved", saved.slice(0,30)); renderSaved(); toast("Look saved"); }
+  if(c){ const l = state.looks[+c.dataset.copy]; const txt = l.title + "\n" + l.slots.map(([k,v])=>`${k}: ${v}`).join("\n") + "\nColours: " + l.colors.map(x=>x[0]).join(", ");
+    navigator.clipboard?.writeText(txt).then(()=>toast("Copied to clipboard"), ()=>toast("Couldn't copy on this device")); }
+  if(d){ const saved = store.get("saved", []); saved.splice(+d.dataset.del,1); store.set("saved", saved); renderSaved(); toast("Removed"); }
+});
+
+/* ================= location ================= */
+async function setPlace(place){
+  state.place = place; store.set("place", place.example ? null : place);
+  state.shops = []; state.brandShops = []; state.view = "all"; renderShops(); renderBrands();
+  renderWeather();
+  try{ state.weather = await loadWeather(place.lat, place.lon); }
+  catch{ $("#verdict").textContent = "Couldn't load the weather. Check your connection, then search the city again."; state.weather = null; }
+  renderWeather(); renderLooks(); renderLocal(); renderWardrobe(); setMapCenter();
+  if(!place.example) findShops();
+}
+async function reverseGeocode(lat, lon){
+  try{
+    const j = await getJSON(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`);
+    return { name: j.city || j.locality || j.principalSubdivision || "Your location", country: j.countryName, cc: (j.countryCode||"").toUpperCase() };
+  }catch{}
+  try{
+    const j = await getJSON(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&zoom=10`);
+    const a = j.address || {};
+    return { name: a.city || a.town || a.village || a.state || "Your location", country: a.country, cc: (a.country_code||"").toUpperCase() };
+  }catch{}
+  return { name:"Your location", country:"", cc:"" };
+}
+$("#locBtn").onclick = () => {
+  if(!navigator.geolocation){ toast("Location isn't available here. Search a city instead."); return; }
+  const btn = $("#locBtn"); btn.disabled = true; btn.textContent = "Locating…";
+  navigator.geolocation.getCurrentPosition(async pos => {
+    const {latitude:lat, longitude:lon} = pos.coords;
+    const g = await reverseGeocode(lat, lon);
+    btn.disabled = false; btn.textContent = "◎ Use my location";
+    setPlace({ ...g, lat, lon, precise:true });
+  }, err => {
+    btn.disabled = false; btn.textContent = "◎ Use my location";
+    toast(err.code===1 ? "Location permission was denied. Search your city instead." : "Couldn't get your location. Search your city instead.");
+    $("#cityInput").focus();
+  }, { enableHighAccuracy:true, timeout:12000, maximumAge:300000 });
+};
+let searchT;
+$("#cityInput").addEventListener("input", e => {
+  clearTimeout(searchT); const q = e.target.value.trim();
+  if(q.length < 2){ $("#suggest").hidden = true; return; }
+  searchT = setTimeout(async () => {
+    try{
+      const j = await getJSON(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=6&language=en`);
+      const res = j.results || [];
+      $("#suggest").innerHTML = res.length ? res.map((r,i)=>`<button type="button" data-i="${i}">${esc(r.name)}<span class="muted">, ${esc([r.admin1, r.country].filter(Boolean).join(", "))}</span></button>`).join("") : `<div style="padding:9px 14px" class="muted">No matches</div>`;
+      $("#suggest").hidden = false;
+      $("#suggest").onclick = ev => { const b = ev.target.closest("button"); if(!b) return; const r = res[+b.dataset.i];
+        $("#suggest").hidden = true; $("#cityInput").value = "";
+        setPlace({ name:r.name, country:r.country, cc:(r.country_code||"").toUpperCase(), lat:r.latitude, lon:r.longitude }); };
+    }catch{ $("#suggest").hidden = true; }
+  }, 300);
+});
+$("#searchForm").addEventListener("submit", e => { e.preventDefault(); const f = $("#suggest button"); if(f) f.click(); });
+document.addEventListener("click", e => { if(!e.target.closest("#searchForm")) $("#suggest").hidden = true; });
+$("#unitBtn").onclick = () => { state.unit = state.unit==="C"?"F":"C"; store.set("unit",state.unit); $("#unitBtn").textContent = "°"+state.unit; renderWeather(); renderLooks(); };
+$("#shuffleBtn").onclick = () => { state.seed = Math.floor(Math.random()*1e6); renderLooks(); };
+
+/* ================= shops ================= */
+const SHOP_TYPES = [
+  ["all","All"],["clothes","Clothing"],["shoes","Shoes"],["accessories","Bags & accessories"],["jewelry","Jewellery & watches"],
+  ["sports","Sportswear"],["tailor","Tailors"],["thrift","Thrift"],["mall","Malls & dept. stores"],["market","Markets"]
+];
+function shopType(t){
+  const s = t.shop, a = t.amenity;
+  if(a==="marketplace") return "market";
+  if(s==="clothes"||s==="boutique"||s==="fashion") return "clothes";
+  if(s==="shoes") return "shoes";
+  if(s==="jewelry"||s==="watches") return "jewelry";
+  if(s==="bag"||s==="leather"||s==="fashion_accessories"||s==="hat") return "accessories";
+  if(s==="sports"||s==="outdoor") return "sports";
+  if(s==="tailor"||s==="fabric"||s==="sewing") return "tailor";
+  if(s==="second_hand"||s==="charity") return "thrift";
+  if(s==="mall"||s==="department_store"||s==="variety_store") return "mall";
+  return "clothes";
+}
+const TYPE_LABEL = Object.fromEntries(SHOP_TYPES);
+
+/* ---------- brand finder ----------
+   Each brand lists the names it trades under, including local scripts, so "UNIQLO" also finds ユニクロ / 优衣库 / 유니클로. */
+const BRANDS = {
+  "UNIQLO":["uniqlo","ユニクロ","优衣库","優衣庫","유니클로"], "GU":["gu","ジーユー","지유"],
+  "MUJI":["muji","無印良品","无印良品","무인양품","mujirushi ryohin"], "Shimamura":["shimamura","しまむら","ファッションセンターしまむら"],
+  "Workman":["workman","ワークマン"], "Zara":["zara"], "H&M":["h&m","h & m","h and m","hennes & mauritz"],
+  "Mango":["mango"], "Primark":["primark","penneys"], "Gap":["gap"], "Old Navy":["old navy"], "COS":["cos"],
+  "Massimo Dutti":["massimo dutti"], "Pull&Bear":["pull&bear","pull & bear","pull and bear"], "Bershka":["bershka"],
+  "Stradivarius":["stradivarius"], "Marks & Spencer":["marks & spencer","marks and spencer","m&s"], "Next":["next"],
+  "Nike":["nike"], "Adidas":["adidas"], "Puma":["puma"], "New Balance":["new balance"], "Skechers":["skechers"],
+  "Converse":["converse"], "Vans":["vans"], "Levi's":["levi's","levis","levi’s","levi strauss"], "Lacoste":["lacoste"],
+  "Tommy Hilfiger":["tommy hilfiger"], "Decathlon":["decathlon","迪卡侬","デカトロン","데카트론"], "LC Waikiki":["lc waikiki","lcw"],
+  "Mr Price":["mr price","mr. price"], "Pep":["pep","pepstores"], "Woolworths":["woolworths"], "Truworths":["truworths"],
+  "Edgars":["edgars"], "Bata":["bata"], "Aldo":["aldo"], "Charles & Keith":["charles & keith","charles and keith"],
+  "Pandora":["pandora"], "Swarovski":["swarovski"], "Claire's":["claire's","claires","claire’s"], "Foot Locker":["foot locker"],
+  "Westside":["westside"], "Fabindia":["fabindia"], "Max Fashion":["max fashion"], "SPAO":["spao","스파오"],
+  "8seconds":["8seconds","에잇세컨즈"], "Topten":["topten","탑텐"], "Forever 21":["forever 21","forever21"]
+};
+const BRAND_SUGGEST = {
+  JP:["UNIQLO","GU","MUJI","Shimamura","Workman","Zara"], KR:["UNIQLO","SPAO","Topten","8seconds","Zara","H&M"],
+  CN:["UNIQLO","Zara","H&M","MUJI","Nike","Adidas"], TW:["UNIQLO","GU","MUJI","Zara","H&M","Nike"], HK:["UNIQLO","GU","MUJI","Zara","H&M","COS"],
+  GB:["Primark","Marks & Spencer","Next","Zara","H&M","UNIQLO"], IE:["Primark","Zara","H&M","Next","Marks & Spencer"],
+  US:["Gap","Old Navy","UNIQLO","Zara","H&M","Nike"], CA:["UNIQLO","Zara","H&M","Gap","Old Navy","Nike"],
+  ZA:["Mr Price","Woolworths","Truworths","Pep","Edgars","Zara"], NG:["Mr Price","LC Waikiki","Bata","Adidas","Nike","Zara"],
+  KE:["Mr Price","LC Waikiki","Bata","Adidas","Nike"], GH:["Mr Price","Bata","Adidas","Nike"],
+  IN:["Westside","Fabindia","Max Fashion","Zara","H&M","UNIQLO"], AE:["Zara","H&M","Max Fashion","Charles & Keith","Nike","UNIQLO"],
+  SG:["UNIQLO","Charles & Keith","Zara","H&M","MUJI","COS"], MY:["UNIQLO","Charles & Keith","Zara","H&M","Padini"],
+  FR:["Zara","H&M","Mango","UNIQLO","Primark","Decathlon"], DE:["Zara","H&M","Primark","UNIQLO","Decathlon","Mango"],
+  ES:["Zara","Mango","Pull&Bear","Bershka","Massimo Dutti","Primark"], IT:["Zara","H&M","UNIQLO","Mango","Decathlon","Bershka"],
+  TR:["LC Waikiki","Zara","H&M","Mango","Bershka","Nike"], AU:["UNIQLO","Zara","H&M","Cotton On","Nike"]
+};
+const BRAND_DEFAULT = ["UNIQLO","Zara","H&M","Nike","Adidas","Mango"];
+/* Official sites. Each redirects to your country's store, where an item page offers in-store stock checks. */
+const BRAND_SITES = {
+  "UNIQLO":"https://www.uniqlo.com/", "GU":"https://www.gu-global.com/", "MUJI":"https://www.muji.com/",
+  "Shimamura":"https://www.shimamura.gr.jp/", "Workman":"https://www.workman.co.jp/", "Zara":"https://www.zara.com/",
+  "H&M":"https://www.hm.com/", "Mango":"https://shop.mango.com/", "Primark":"https://www.primark.com/", "Gap":"https://www.gap.com/",
+  "Old Navy":"https://oldnavy.gap.com/", "COS":"https://www.cos.com/", "Massimo Dutti":"https://www.massimodutti.com/",
+  "Pull&Bear":"https://www.pullandbear.com/", "Bershka":"https://www.bershka.com/", "Stradivarius":"https://www.stradivarius.com/",
+  "Marks & Spencer":"https://www.marksandspencer.com/", "Next":"https://www.next.co.uk/", "Nike":"https://www.nike.com/",
+  "Adidas":"https://www.adidas.com/", "Puma":"https://www.puma.com/", "New Balance":"https://www.newbalance.com/",
+  "Skechers":"https://www.skechers.com/", "Converse":"https://www.converse.com/", "Vans":"https://www.vans.com/",
+  "Levi's":"https://www.levi.com/", "Lacoste":"https://www.lacoste.com/", "Tommy Hilfiger":"https://www.tommy.com/",
+  "Decathlon":"https://www.decathlon.com/", "LC Waikiki":"https://www.lcwaikiki.com/", "Mr Price":"https://www.mrp.com/",
+  "Pep":"https://www.pepstores.com/", "Woolworths":"https://www.woolworths.co.za/", "Truworths":"https://www.truworths.co.za/",
+  "Edgars":"https://www.edgars.co.za/", "Bata":"https://www.bata.com/", "Aldo":"https://www.aldoshoes.com/",
+  "Charles & Keith":"https://www.charleskeith.com/", "Pandora":"https://www.pandora.net/", "Swarovski":"https://www.swarovski.com/",
+  "Claire's":"https://www.claires.com/", "Foot Locker":"https://www.footlocker.com/", "Westside":"https://www.westside.com/",
+  "Fabindia":"https://www.fabindia.com/", "Max Fashion":"https://www.maxfashion.com/", "Forever 21":"https://www.forever21.com/"
+};
+const normUrl = u => /^https?:/i.test(u) ? u : "https://" + u;
+// Best stock-check destination: this store's own page (from map data), then the brand's site, then a web search.
+function stockUrl(brand, shop){
+  const own = shop?.tags?.website || shop?.tags?.["contact:website"];
+  if(own) return normUrl(own);
+  if(BRAND_SITES[brand]) return BRAND_SITES[brand];
+  if(shop?.tags?.["brand:website"]) return normUrl(shop.tags["brand:website"]);
+  return `https://www.google.com/search?q=${encodeURIComponent(brand + " check in-store stock availability")}`;
+}
+const stockTitle = b => `Opens ${b}'s website. Open an item and choose the store-availability option to see stock at stores near you.`;
+// Recognise known brands in the general shop list too.
+function detectBrand(t){
+  const fields = [t.brand, t["brand:en"], t.name, t["name:en"]].filter(Boolean);
+  if(!fields.length) return null;
+  return Object.keys(BRANDS).find(b => { const re = brandRe(b); return fields.some(f => re.test(f.trim())); }) || null;
+}
+const brandKey = n => Object.keys(BRANDS).find(k => k.toLowerCase()===n.trim().toLowerCase()) || n.trim();
+const aliasesOf = n => BRANDS[n] || [n.toLowerCase()];
+// Overpass strings can't safely carry backslashes, so regex metacharacters in typed names become "." (any character).
+const ovEsc = s => s.toLowerCase().replace(/[.*+?^${}()|[\]\\"]/g, ".");
+const jsEsc = s => s.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const brandRe = n => new RegExp(`^(${aliasesOf(n).map(jsEsc).join("|")})([^a-z0-9]|$)`, "i");
+
+state.myBrands = store.get("myBrands", []);
+state.selBrands = store.get("selBrands", null);
+state.selAuto = !state.selBrands; // follow local suggestions until the user picks
+state.view = "all"; state.brandShops = []; state.brandFilter = "all"; state.brandSearched = [];
+
+function brandChoices(){
+  const sug = BRAND_SUGGEST[state.place?.cc] || BRAND_DEFAULT;
+  return [...new Set([...state.myBrands, ...sug])];
+}
+function renderBrands(){
+  const choices = brandChoices();
+  if(state.selAuto || !state.selBrands) state.selBrands = choices.slice(0,3);
+  $("#brandChips").innerHTML = choices.map(b => {
+    const mine = state.myBrands.includes(b);
+    return `<button type="button" data-b="${esc(b)}" aria-pressed="${state.selBrands.includes(b)}">${esc(b)}${mine ? ` <span data-rm="${esc(b)}" aria-label="Remove ${esc(b)}" title="Remove" style="opacity:.6;margin-left:2px">×</span>` : ""}</button>`;
+  }).join("");
+  $("#brandList").innerHTML = Object.keys(BRANDS).map(b => `<option value="${esc(b)}"></option>`).join("");
+  const n = state.selBrands.length;
+  $("#brandBtn").textContent = n ? `Find ${n===1 ? state.selBrands[0] : n+" brands"} nearby` : "Select a brand";
+  $("#brandBtn").disabled = !n;
+}
+$("#brandChips").onclick = e => {
+  const rm = e.target.closest("[data-rm]");
+  if(rm){ const b = rm.dataset.rm; state.myBrands = state.myBrands.filter(x=>x!==b); state.selBrands = state.selBrands.filter(x=>x!==b);
+    state.selAuto = false; store.set("myBrands", state.myBrands); store.set("selBrands", state.selBrands); renderBrands(); renderLooks(); return; }
+  const btn = e.target.closest("[data-b]"); if(!btn) return;
+  const b = btn.dataset.b;
+  state.selBrands = state.selBrands.includes(b) ? state.selBrands.filter(x=>x!==b) : [...state.selBrands, b];
+  state.selAuto = false; store.set("selBrands", state.selBrands); renderBrands(); renderLooks();
+};
+$("#brandForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const raw = $("#brandInput").value.trim(); if(raw.length < 2){ toast("Type at least 2 letters of a brand name."); return; }
+  const b = brandKey(raw);
+  if(!brandChoices().includes(b)) state.myBrands = [b, ...state.myBrands].slice(0,20);
+  if(!state.selBrands.includes(b)) state.selBrands = [...state.selBrands, b];
+  state.selAuto = false;
+  store.set("myBrands", state.myBrands); store.set("selBrands", state.selBrands);
+  $("#brandInput").value = ""; renderBrands(); renderLooks(); findBrands();
+});
+
+async function overpass(q){
+  const endpoints = ["https://overpass-api.de/api/interpreter","https://overpass.kumi.systems/api/interpreter","https://maps.mail.ru/osm/tools/overpass/api/interpreter"];
+  for(const ep of endpoints){
+    try{ return await getJSON(ep, { method:"POST", body:"data="+encodeURIComponent(q), headers:{"Content-Type":"application/x-www-form-urlencoded"} }); }catch{}
+  }
+  return null;
+}
+function toShop(e, lat, lon){
+  const t = e.tags || {}, la = e.lat ?? e.center?.lat, lo = e.lon ?? e.center?.lon;
+  if(la==null) return null;
+  const type = shopType(t);
+  const addr = [t["addr:housenumber"], t["addr:street"]].filter(Boolean).join(" ") || t["addr:full"] || t["addr:suburb"] || t["addr:city"] || "";
+  return { id: e.type+e.id, tags:t, name: t.name || t.brand || "Unnamed " + TYPE_LABEL[type].toLowerCase().replace(/s$/,""), type, lat:la, lon:lo,
+    dist: km(lat,lon,la,lo), addr, hours: t.opening_hours || "", web: t.website || t["contact:website"] || t["brand:website"] || "",
+    phone: t.phone || t["contact:phone"] || "", brand: t.brand && t.name && t.brand!==t.name ? t.brand : "" };
+}
+async function findShops(){
+  if(!state.place){ toast("Choose a location first."); return; }
+  state.view = "all";
+  const R = +$("#radius").value, {lat, lon} = state.place;
+  $("#shopStatus").className = "status"; $("#shopStatus").textContent = "Searching for shops…";
+  $("#shopBtn").disabled = true;
+  const q = `[out:json][timeout:25];(nwr["shop"~"^(clothes|boutique|fashion|shoes|jewelry|watches|bag|leather|fashion_accessories|hat|tailor|fabric|second_hand|charity|mall|department_store|sports)$"](around:${R},${lat},${lon});nwr["amenity"="marketplace"](around:${R},${lat},${lon}););out center tags 300;`;
+  const data = await overpass(q);
+  $("#shopBtn").disabled = false;
+  if(!data){ $("#shopStatus").className = "status err"; $("#shopStatus").textContent = "The shop search service is busy. Wait a moment, then tap “Find shops” again."; return; }
+  state.shops = data.elements.map(e => toShop(e, lat, lon)).filter(Boolean).sort((a,b)=> a.dist-b.dist);
+  renderShops();
+}
+async function findBrands(){
+  if(!state.place){ toast("Choose a location first."); return; }
+  const brands = [...state.selBrands]; if(!brands.length) return;
+  const R = +$("#brandRadius").value, {lat, lon} = state.place;
+  state.view = "brand"; state.brandFilter = "all";
+  $("#brandBtn").disabled = true; $("#brandBtn").textContent = "Searching…";
+  $("#shopStatus").className = "status"; $("#shopStatus").textContent = `Looking for ${brands.join(", ")} within ${R/1000} km…`;
+  const alts = brands.flatMap(aliasesOf).map(ovEsc).join("|");
+  const P = `^(${alts})([^a-zA-Z0-9]|$)`;
+  const around = `(around:${R},${lat},${lon})`;
+  const q = `[out:json][timeout:40];(nwr["shop"]["name"~"${P}",i]${around};nwr["shop"]["brand"~"${P}",i]${around};nwr["shop"]["name:en"~"${P}",i]${around};nwr["shop"]["brand:en"~"${P}",i]${around};);out center tags 400;`;
+  const data = await overpass(q);
+  renderBrands();
+  if(!data){ $("#shopStatus").className = "status err"; $("#shopStatus").textContent = "The store search service is busy. Wait a moment, then try again."; return; }
+  const res = [];
+  for(const e of data.elements){
+    const s = toShop(e, lat, lon); if(!s) continue;
+    const t = s.tags, fields = [t.brand, t["brand:en"], t.name, t["name:en"], t["name:ja"], t["name:ko"], t["name:zh"]].filter(Boolean);
+    const hit = brands.find(b => { const re = brandRe(b); return fields.some(f => re.test(f.trim())); });
+    if(!hit) continue;
+    s.brandName = hit; res.push(s);
+  }
+  const seen = new Set();
+  state.brandShops = res.filter(s => !seen.has(s.id) && seen.add(s.id)).sort((a,b)=>a.dist-b.dist);
+  state.brandSearched = brands;
+  renderShops();
+}
+$("#brandBtn").onclick = findBrands;
+
+let map, markerLayer, youMarker; const markers = {};
+function initMap(){
+  if(!window.L){ $("#map").innerHTML = `<div class="empty" style="margin:16px">The map couldn't load. The shop list still works.</div>`; return; }
+  map = L.map("map", { scrollWheelZoom:false }).setView([48.8566, 2.3522], 13);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom:19, attribution:"© OpenStreetMap" }).addTo(map);
+  markerLayer = L.layerGroup().addTo(map);
+}
+function setMapCenter(){
+  if(!map || !state.place) return;
+  map.setView([state.place.lat, state.place.lon], 14);
+  if(youMarker) youMarker.remove();
+  youMarker = L.circleMarker([state.place.lat, state.place.lon], { radius:8, color:"#fff", weight:3, fillColor:"#3049e8", fillOpacity:1 }).addTo(map).bindTooltip(state.place.precise ? "You are here" : state.place.name);
+}
+const gmSearch = b => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b + " near " + (state.place?.name || ""))}`;
+function renderShops(){
+  for(const s of [...state.shops, ...state.brandShops]) if(s.knownBrand === undefined) s.knownBrand = s.brandName || detectBrand(s.tags);
+  const brandView = state.view==="brand";
+  const data = brandView ? state.brandShops : state.shops;
+  const keyOf = s => brandView ? s.brandName : s.type;
+  const filter = brandView ? state.brandFilter : state.shopFilter;
+  const counts = {}; data.forEach(s => counts[keyOf(s)] = (counts[keyOf(s)]||0)+1);
+  const chipDefs = brandView ? [["all","All brands"], ...state.brandSearched.filter(b=>counts[b]).map(b=>[b,b])] : SHOP_TYPES.filter(([k]) => k==="all" || counts[k]);
+  $("#shopFilters").innerHTML = chipDefs.map(([k,l]) => `<button type="button" data-f="${esc(k)}" aria-pressed="${filter===k}">${esc(l)}${k==="all" ? (data.length?` (${data.length})`:"") : ` (${counts[k]})`}</button>`).join("");
+  const list = data.filter(s => filter==="all" || keyOf(s)===filter);
+  if(markerLayer) markerLayer.clearLayers();
+  $("#shopsHeading").textContent = brandView ? `${state.brandSearched.join(", ")} near you` : "Clothes & accessories nearby";
+
+  // Brands with no stores in the map data get a Google Maps fallback.
+  const missing = brandView ? state.brandSearched.filter(b => !counts[b]) : [];
+  const missingHtml = missing.length ? `<div class="empty" style="text-align:left">No ${missing.map(esc).join(", ")} store${missing.length>1?"s":""} found within ${(+$("#brandRadius").value/1000)} km in OpenStreetMap. The brand may not be here, or the map may be missing it. Try a wider distance, or check Google Maps:
+      <div class="links" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;font-weight:600">${missing.map(b=>`<a href="${gmSearch(b)}" target="_blank" rel="noopener">Search ${esc(b)} on Google Maps</a><a href="${esc(stockUrl(b))}" target="_blank" rel="noopener" title="${esc(stockTitle(b))}">Shop ${esc(b)} online</a>`).join("")}</div></div>` : "";
+
+  if(!data.length){
+    $("#shopList").innerHTML = brandView ? missingHtml
+      : `<div class="empty">${state.place && !state.place.example ? "No shops loaded yet. Tap “Find shops”, or widen the distance." : "Use your location or search a city, and nearby clothing, shoe, jewellery and accessory shops will appear here with directions."}</div>`;
+    if(brandView){ $("#shopStatus").className = "status"; $("#shopStatus").innerHTML = `No matching stores nearby. <button class="linkbtn" type="button" data-allshops>Show all shops</button>`; }
+    return;
+  }
+  $("#shopStatus").className = "status";
+  $("#shopStatus").innerHTML = brandView
+    ? `${list.length} store${list.length===1?"":"s"} within ${(+$("#brandRadius").value/1000)} km of ${esc(state.place.name)}, nearest first. <button class="linkbtn" type="button" data-allshops>Show all shops</button>`
+    : `${list.length} place${list.length===1?"":"s"} within ${(+$("#radius").value/1000)} km of ${esc(state.place.name)}, nearest first.`;
+  $("#shopList").innerHTML = list.slice(0,150).map(s => `<div class="shop" data-id="${s.id}" tabindex="0" role="button" aria-label="Show ${esc(s.name)} on the map">
+      <h4>${esc(s.name)}</h4><span class="dist">${s.dist<1 ? Math.round(s.dist*1000)+" m" : s.dist.toFixed(1)+" km"}</span>
+      <div class="meta">${brandView ? `<span class="tag trad">${esc(s.brandName)}</span> ` : ""}<span class="tag">${esc(TYPE_LABEL[s.type])}</span> ${esc([brandView ? "" : s.brand, s.addr, s.hours].filter(Boolean).join(" · "))}</div>
+      <div class="links">
+        <a href="https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lon}" target="_blank" rel="noopener">Directions</a>
+        <a href="https://www.openstreetmap.org/?mlat=${s.lat}&mlon=${s.lon}#map=18/${s.lat}/${s.lon}" target="_blank" rel="noopener">Map</a>
+        ${s.knownBrand ? `<a class="stock" href="${esc(stockUrl(s.knownBrand, s))}" target="_blank" rel="noopener" title="${esc(stockTitle(s.knownBrand))}">Check stock ↗</a>` : ""}
+        ${s.web && !s.knownBrand ? `<a href="${esc(normUrl(s.web))}" target="_blank" rel="noopener">Website</a>` : ""}
+        ${s.phone ? `<span class="muted" style="font-weight:500">${esc(s.phone)}</span>` : ""}
+      </div></div>`).join("") + missingHtml;
+  if(map){
+    const bounds = [[state.place.lat, state.place.lon]];
+    list.slice(0,150).forEach(s => {
+      markers[s.id] = L.circleMarker([s.lat,s.lon], { radius: brandView?8:6, color:"#1d1a2b", weight:1.5, fillColor: brandView ? "#3049e8" : "#f2c6c2", fillOpacity:.95 })
+        .bindPopup(`<b>${esc(s.name)}</b><br>${esc(brandView ? s.brandName : TYPE_LABEL[s.type])}<br><a href="https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lon}" target="_blank" rel="noopener">Directions</a>`)
+        .addTo(markerLayer);
+      bounds.push([s.lat,s.lon]);
+    });
+    if(bounds.length>1) map.fitBounds(bounds, { padding:[24,24], maxZoom:16 });
+  }
+}
+$("#shopFilters").onclick = e => { const b = e.target.closest("button"); if(!b) return;
+  if(state.view==="brand") state.brandFilter = b.dataset.f; else state.shopFilter = b.dataset.f; renderShops(); };
+$("#shopStatus").addEventListener("click", e => { if(e.target.closest("[data-allshops]")){ state.view = "all"; if(state.shops.length) renderShops(); else findShops(); } });
+$("#shopList").addEventListener("click", e => {
+  if(e.target.closest("a")) return;
+  const el = e.target.closest(".shop"); if(!el || !map) return;
+  const m = markers[el.dataset.id]; if(m){ map.setView(m.getLatLng(), 17); m.openPopup(); }
+  document.querySelectorAll(".shop.active").forEach(x=>x.classList.remove("active")); el.classList.add("active");
+});
+$("#shopList").addEventListener("keydown", e => { if(e.key==="Enter" && e.target.classList.contains("shop")) e.target.click(); });
+$("#shopBtn").onclick = findShops;
+$("#radius").onchange = () => { if(state.place && !state.place.example) findShops(); };
+$("#brandRadius").onchange = () => { if(state.view==="brand") findBrands(); };
+
+/* ================= wardrobe =================
+   Items live in IndexedDB on this device: {id, name, cat, warmth, styles[], color, colorName, img (JPEG data URL), added, lastWorn} */
+const W_CATS = [["top","Top"],["bottom","Bottom"],["dress","Dress / one-piece"],["layer","Layer"],["outer","Coat / jacket"],["shoes","Shoes"],["accessory","Accessory"]];
+const W_CAT_LABEL = Object.fromEntries(W_CATS);
+const W_WARMTH = [["light","Light · hot days","MWH"],["medium","Medium","KMW"],["warm","Warm · cold days","FCK"],["all","Any weather","FCKMWH"]];
+const W_WARM_BANDS = Object.fromEntries(W_WARMTH.map(w => [w[0], w[2]]));
+const W_STYLES = [["c","Casual"],["s","Smart"],["f","Formal"],["a","Sport"],["x","Street"]];
+const W_DEFAULT_WARMTH = { shoes:"all", accessory:"all", outer:"warm", layer:"medium" };
+const NEAR_STYLE = { c:"x", x:"c", s:"f", f:"s", a:"c" };
+const COLOR_NAMES = [
+  ["Black","#1a1a1a",1],["Charcoal","#3d3d42",1],["Grey","#8e8e93",1],["White","#f7f7f5",1],["Cream","#efe6d2",1],["Beige","#d8c3a0",1],
+  ["Camel","#b88a55",1],["Brown","#6b4630",1],["Khaki","#b5a77d",1],["Navy","#1f2a4a",1],["Denim","#4a6a92",1],["Light blue","#a9c7e6",0],
+  ["Blue","#2b59c3",0],["Teal","#1f7a7a",0],["Green","#2f8f4e",0],["Olive","#6b6b33",1],["Mint","#a9dcc3",0],["Yellow","#f2d43d",0],
+  ["Mustard","#c9972c",0],["Orange","#e8762d",0],["Rust","#a3492a",0],["Red","#c8262f",0],["Burgundy","#6d1f2b",0],["Pink","#ec9db5",0],
+  ["Fuchsia","#d6248f",0],["Lilac","#c3b3dd",0],["Purple","#6a3d9a",0]
+];
+const hexRgb = h => [1,3,5].map(i => parseInt(h.slice(i,i+2),16));
+function nearestColor(hex){
+  const [r,g,b] = hexRgb(hex);
+  let best = COLOR_NAMES[0], bd = Infinity;
+  for(const c of COLOR_NAMES){ const [R,G,B] = hexRgb(c[1]); const d = 2*(r-R)**2 + 4*(g-G)**2 + 3*(b-B)**2; if(d < bd){ bd = d; best = c; } }
+  return best;
+}
+const isNeutral = name => (COLOR_NAMES.find(c => c[0]===name) || [,,1])[2] === 1;
+function hue(hex){
+  const [r,g,b] = hexRgb(hex).map(v => v/255), mx = Math.max(r,g,b), mn = Math.min(r,g,b), d = mx-mn;
+  if(!d) return 0;
+  const h = mx===r ? ((g-b)/d)%6 : mx===g ? (b-r)/d+2 : (r-g)/d+4;
+  return (h*60+360)%360;
+}
+
+/* --- IndexedDB --- */
+const wdb = {
+  _p: null,
+  open(){ return this._p ||= new Promise((res, rej) => {
+    const rq = indexedDB.open("stylecast", 1);
+    rq.onupgradeneeded = () => rq.result.createObjectStore("items", { keyPath:"id" });
+    rq.onsuccess = () => res(rq.result); rq.onerror = () => rej(rq.error);
+  }); },
+  async tx(mode, fn){ const db = await this.open(); return new Promise((res, rej) => { const t = db.transaction("items", mode); const r = fn(t.objectStore("items")); t.oncomplete = () => res(r?.result); t.onerror = () => rej(t.error); }); },
+  all(){ return this.tx("readonly", s => s.getAll()); },
+  put(item){ return this.tx("readwrite", s => s.put(item)); },
+  del(id){ return this.tx("readwrite", s => s.delete(id)); }
+};
+state.wardrobe = []; state.wardFilter = "all"; state.pending = []; state.editing = null;
+
+/* --- photo processing: shrink to 640px and find the main colour from the centre of the frame --- */
+function loadImage(file){ return new Promise((res, rej) => { const url = URL.createObjectURL(file); const im = new Image(); im.onload = () => { URL.revokeObjectURL(url); res(im); }; im.onerror = rej; im.src = url; }); }
+async function processPhoto(file){
+  const im = await loadImage(file);
+  const scale = Math.min(1, 640 / Math.max(im.width, im.height));
+  const cv = document.createElement("canvas"); cv.width = Math.round(im.width*scale); cv.height = Math.round(im.height*scale);
+  const cx = cv.getContext("2d"); cx.drawImage(im, 0, 0, cv.width, cv.height);
+  const img = cv.toDataURL("image/jpeg", 0.82);
+  const S = 40, sc = document.createElement("canvas"); sc.width = sc.height = S;
+  const sx = sc.getContext("2d"); sx.drawImage(im, im.width*0.25, im.height*0.25, im.width*0.5, im.height*0.5, 0, 0, S, S);
+  const px = sx.getImageData(0,0,S,S).data, buckets = {};
+  for(let i=0; i<px.length; i+=4){
+    const k = (px[i]>>4)<<8 | (px[i+1]>>4)<<4 | (px[i+2]>>4);
+    (buckets[k] ||= [0,0,0,0]); const bk = buckets[k]; bk[0]+=px[i]; bk[1]+=px[i+1]; bk[2]+=px[i+2]; bk[3]++;
+  }
+  const top = Object.values(buckets).sort((a,b)=>b[3]-a[3])[0];
+  const color = "#" + top.slice(0,3).map(v => Math.round(v/top[3]).toString(16).padStart(2,"0")).join("");
+  return { img, color };
+}
+
+/* --- add / edit dialog --- */
+const dlg = $("#itemDlg");
+function segHtml(opts, sel, multi){ return opts.map(([v,l]) => `<button type="button" data-v="${v}" aria-pressed="${multi ? sel.includes(v) : sel===v}">${esc(l)}</button>`).join(""); }
+function openEditor(){
+  const it = state.editing || state.pending[0];
+  if(!it){ if(dlg.open) dlg.close(); return; }
+  const d = state.editing ? it : (it.draft ||= { cat:"top", warmth:"medium", styles:["c"], color: it.color, name:"" });
+  $("#dlgImg").src = it.img;
+  $("#itemName").value = d.name || "";
+  $("#itemColor").value = d.color;
+  const draw = () => {
+    $("#dlgCat").innerHTML = segHtml(W_CATS, d.cat);
+    $("#dlgWarm").innerHTML = segHtml(W_WARMTH, d.warmth);
+    $("#dlgStyles").innerHTML = segHtml(W_STYLES, d.styles, true);
+    $("#colorName").textContent = nearestColor(d.color)[0];
+    $("#itemName").placeholder = `e.g. ${nearestColor(d.color)[0]} ${W_CAT_LABEL[d.cat].toLowerCase()}`;
+  };
+  $("#dlgCat").onclick = e => { const b = e.target.closest("button"); if(!b) return; d.cat = b.dataset.v; if(!state.editing && !d.warmTouched) d.warmth = W_DEFAULT_WARMTH[d.cat] || "medium"; draw(); };
+  $("#dlgWarm").onclick = e => { const b = e.target.closest("button"); if(!b) return; d.warmth = b.dataset.v; d.warmTouched = true; draw(); };
+  $("#dlgStyles").onclick = e => { const b = e.target.closest("button"); if(!b) return; const v = b.dataset.v;
+    d.styles = d.styles.includes(v) ? (d.styles.length>1 ? d.styles.filter(x=>x!==v) : d.styles) : [...d.styles, v]; draw(); };
+  $("#itemColor").oninput = e => { d.color = e.target.value; draw(); };
+  $("#itemName").oninput = e => { d.name = e.target.value; };
+  draw();
+  $("#dlgTitle").textContent = state.editing ? "Edit item" : "Add to wardrobe";
+  $("#dlgCount").textContent = state.editing ? "" : state.pending.length > 1 ? `${state.pending.length} photos left` : "";
+  $("#dlgDelete").hidden = !state.editing;
+  $("#dlgSkip").textContent = state.editing ? "Cancel" : "Skip";
+  if(!dlg.open) dlg.showModal();
+}
+$("#wardrobeFile").addEventListener("change", async e => {
+  const files = [...e.target.files]; e.target.value = "";
+  if(!files.length) return;
+  $("#wardStatus").textContent = `Preparing ${files.length} photo${files.length>1?"s":""}…`;
+  for(const f of files){ try{ state.pending.push(await processPhoto(f)); }catch{ toast(`Couldn't read ${f.name}. Try a JPEG or PNG photo.`); } }
+  state.editing = null; renderWardrobe(); openEditor();
+});
+$("#itemForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  if(state.editing){
+    const it = state.editing; it.name = it.name?.trim() || `${nearestColor(it.color)[0]} ${W_CAT_LABEL[it.cat].toLowerCase()}`; it.colorName = nearestColor(it.color)[0];
+    await wdb.put(it); state.editing = null; toast("Saved");
+  } else {
+    const p = state.pending.shift(), d = p.draft;
+    const item = { id: "w" + Date.now().toString(36) + Math.random().toString(36).slice(2,6), name: d.name.trim() || `${nearestColor(d.color)[0]} ${W_CAT_LABEL[d.cat].toLowerCase()}`,
+      cat: d.cat, warmth: d.warmth, styles: d.styles, color: d.color, colorName: nearestColor(d.color)[0], img: p.img, added: Date.now(), lastWorn: 0 };
+    try{ await wdb.put(item); state.wardrobe.push(item); toast(`Added ${item.name}`); }
+    catch{ toast("Couldn't save. Your device storage may be full."); }
+  }
+  await reloadWardrobe(); openEditor();
+});
+$("#dlgSkip").onclick = () => { if(state.editing){ state.editing = null; } else state.pending.shift(); openEditor(); renderWardrobe(); };
+$("#dlgDelete").onclick = async () => {
+  const it = state.editing; if(!it) return;
+  const btn = $("#dlgDelete");
+  if(btn.dataset.confirm !== "1"){ btn.dataset.confirm = "1"; btn.textContent = "Tap again to delete"; setTimeout(()=>{ btn.dataset.confirm = ""; btn.textContent = "Delete"; }, 3000); return; }
+  btn.dataset.confirm = ""; btn.textContent = "Delete";
+  await wdb.del(it.id); state.editing = null; dlg.close(); toast(`Deleted ${it.name}`); reloadWardrobe();
+};
+dlg.addEventListener("cancel", () => { state.editing = null; state.pending = []; renderWardrobe(); });
+$("#wardGrid").addEventListener("click", e => {
+  const b = e.target.closest("[data-item]"); if(!b) return;
+  const it = state.wardrobe.find(x => x.id === b.dataset.item); if(!it) return;
+  state.editing = { ...it, styles:[...it.styles] }; openEditor();
+});
+$("#wardFilters").onclick = e => { const b = e.target.closest("button"); if(!b) return; state.wardFilter = b.dataset.f; renderWardrobe(); };
+
+document.querySelectorAll('label.btn[for]').forEach(l => l.addEventListener("keydown", e => { if(e.key==="Enter"||e.key===" "){ e.preventDefault(); document.getElementById(l.htmlFor).click(); } }));
+/* --- backup / restore --- */
+$("#wardExport").onclick = () => {
+  if(!state.wardrobe.length){ toast("Your wardrobe is empty. Add some clothes first."); return; }
+  const blob = new Blob([JSON.stringify({ app:"stylecast", version:1, items: state.wardrobe })], { type:"application/json" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `stylecast-wardrobe-${new Date().toISOString().slice(0,10)}.json`;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href), 2000);
+  toast("Backup downloaded");
+};
+$("#wardImport").addEventListener("change", async e => {
+  const f = e.target.files[0]; e.target.value = ""; if(!f) return;
+  try{
+    const j = JSON.parse(await f.text());
+    const items = (j.items || []).filter(i => i.id && i.img && W_CAT_LABEL[i.cat]);
+    for(const i of items) await wdb.put(i);
+    await reloadWardrobe(); toast(`Restored ${items.length} item${items.length===1?"":"s"}`);
+  }catch{ toast("That file isn't a Stylecast backup."); }
+});
+
+/* --- outfit from your own clothes --- */
+function todayCtx(){
+  const w = state.weather, cur = w.current, d = w.daily;
+  let style = OCC_STYLE[state.occasion]; if(state.vibe==="street" && style==="c") style = "x";
+  return { b: band(cur.apparent_temperature), bHi: band(d.apparent_temperature_max[0]),
+    wet: (d.precipitation_probability_max[0] ?? 0) >= 50 || WMO(cur.weather_code)[1]==="rain", style };
+}
+function wardPool(cat, bands, style, strict){
+  return state.wardrobe.filter(it => it.cat===cat && [...bands].some(b => W_WARM_BANDS[it.warmth].includes(b))
+    && (it.styles.includes(style) || (!strict && it.styles.includes(NEAR_STYLE[style]))));
+}
+function colourScore(items){
+  const bold = items.filter(i => !isNeutral(i.colorName));
+  let s = items.length - bold.length;            // neutrals go with everything
+  for(let i=0;i<bold.length;i++) for(let j=i+1;j<bold.length;j++){
+    if(bold[i].colorName === bold[j].colorName) { s += 1; continue; }
+    const dh = Math.abs(hue(bold[i].color) - hue(bold[j].color)), h = Math.min(dh, 360-dh);
+    s += h < 35 ? 2 : (h > 150 ? 1.5 : -2.5);     // analogous or complementary works; in-between clashes
+  }
+  if(bold.length > 2) s -= 2;                    // keep to two statement colours at most
+  return s;
+}
+function buildWardrobeLook(){
+  const ws = state.wardrobe; if(!state.weather || ws.length < 2) return null;
+  const { b, bHi, wet, style } = todayCtx();
+  const day = 864e5, now = Date.now();
+  const r = rng(state.seed + 7);
+  const needLayer = "KC".includes(b) || (style==="s"||style==="f") && "KM".includes(b) || style==="f";
+  const needOuter = "FCK".includes(b);
+  const pools = {};
+  for(const c of ["top","bottom","dress","layer","outer","shoes","accessory"]){
+    const bands = c==="bottom" || c==="dress" ? b + bHi : c==="outer" || c==="layer" ? b : b;
+    pools[c] = wardPool(c, bands, style, true); if(!pools[c].length) pools[c] = wardPool(c, bands, style, false);
+  }
+  let best = null;
+  for(let t=0; t<80; t++){
+    const pick1 = c => pools[c].length ? pools[c][Math.floor(r()*pools[c].length)] : null;
+    const useDress = pools.dress.length && (!pools.top.length || !pools.bottom.length || r() < 0.35);
+    const set = useDress ? { dress: pick1("dress") } : { top: pick1("top"), bottom: pick1("bottom") };
+    if(needLayer) set.layer = pick1("layer");
+    if(needOuter) set.outer = pick1("outer");
+    set.shoes = pick1("shoes"); set.accessory = pick1("accessory");
+    const items = Object.values(set).filter(Boolean);
+    let score = colourScore(items) + items.length * 1.2;
+    for(const it of items){ if(it.lastWorn && now - it.lastWorn < 2*day) score -= 2.5; if(it.styles.includes(style)) score += .5; }
+    if(!best || score > best.score) best = { set, score };
+  }
+  const set = best.set, used = new Set();
+  const slots = [], ids = [];
+  const add = (label, it, slotForSuggestion, catalogSlot) => {
+    if(it){ slots.push([label, it.name, it.img, false]); ids.push(it.id); }
+    else { const sug = choose(catalogSlot, b, style, state.wear, r, used); if(sug) slots.push([label, sug, null, true]); }
+  };
+  if(set.dress) add("Outfit", set.dress, "dress", "onepiece");
+  else { add("Top", set.top, "top", "top"); add("Bottom", set.bottom, "bottom", "bottom"); }
+  if(needLayer) add("Layer", set.layer, "layer", "layer");
+  if(needOuter) add("Outerwear", set.outer, "outer", "outer");
+  if(wet && !needOuter) slots.push(["Rain", "Compact umbrella or a packable rain jacket", null, false]);
+  add("Shoes", set.shoes, "shoes", "shoes");
+  if(set.accessory) add("Accessory", set.accessory);
+  const owned = Object.values(set).filter(Boolean);
+  const colors = owned.slice(0,3).map(i => [i.colorName, i.color]);
+  const missing = slots.filter(s => s[3]).length;
+  const tip = owned.length < 2 ? "Add more clothes for full outfits from your wardrobe."
+    : (missing ? `Built from your clothes. ${missing} piece${missing>1?"s":""} you don't have yet ${missing>1?"are":"is"} marked “Missing”. ` : "Built entirely from your clothes. ")
+      + (owned.some(i => i.lastWorn && now - i.lastWorn < 2*day) ? "Includes something you wore recently." : "Nothing here was worn in the last two days.");
+  return { title:"From your wardrobe", ward:true, slots, itemIds: ids, colors: colors.length ? colors : [["—","#cccccc"]], tip };
+}
+function wardrobeGaps(){
+  if(!state.weather) return [];
+  const { b, bHi, style } = todayCtx(), gaps = [];
+  const has = (c, bands) => wardPool(c, bands, style, false).length > 0;
+  if(!has("dress", b+bHi)){
+    if(!has("top", b)) gaps.push(["a top", "top"]);
+    if(!has("bottom", b+bHi)) gaps.push(["a bottom", "bottom"]);
+  }
+  if("FCK".includes(b) && !has("outer", b)) gaps.push(["a coat or jacket", "outer"]);
+  if(!has("shoes", b)) gaps.push(["shoes", "shoes"]);
+  const r = rng(state.seed + 3), used = new Set();
+  return gaps.map(([label, slot]) => [label, choose(slot, b, style, state.wear, r, used)]);
+}
+function timeAgo(t){ if(!t) return "Not worn yet"; const d = Math.floor((Date.now()-t)/864e5); return d<=0 ? "Worn today" : d===1 ? "Worn yesterday" : `Worn ${d} days ago`; }
+function renderWardrobe(){
+  const ws = state.wardrobe;
+  const counts = {}; ws.forEach(i => counts[i.cat] = (counts[i.cat]||0)+1);
+  $("#wardFilters").innerHTML = ws.length ? [["all",`All (${ws.length})`], ...W_CATS.filter(([k]) => counts[k]).map(([k,l]) => [k, `${l} (${counts[k]})`])]
+    .map(([k,l]) => `<button type="button" data-f="${k}" aria-pressed="${state.wardFilter===k}">${esc(l)}</button>`).join("") : "";
+  const list = ws.filter(i => state.wardFilter==="all" || i.cat===state.wardFilter).sort((a,b) => W_CATS.findIndex(c=>c[0]===a.cat) - W_CATS.findIndex(c=>c[0]===b.cat) || b.added - a.added);
+  if(!ws.length){
+    $("#wardGrid").innerHTML = `<div class="empty ward-empty"><b style="color:var(--ink)">Your wardrobe is empty.</b><br>Tap “Add clothes” and photograph a few things you own: two tops, a bottom and a pair of shoes is enough to start. Lay each item flat or hang it against a plain wall, with the item filling most of the frame.</div>`;
+  } else {
+    $("#wardGrid").innerHTML = list.map(i => `<button type="button" class="witem" data-item="${i.id}" aria-label="Edit ${esc(i.name)}">
+      <img src="${esc(i.img)}" alt="${esc(i.name)}" loading="lazy">
+      <span class="wname"><span class="dot" style="background:${esc(i.color)}"></span>${esc(i.name)}</span>
+      <span class="wmeta">${esc(W_CAT_LABEL[i.cat])} · ${esc(W_WARMTH.find(w=>w[0]===i.warmth)[1].split(" ·")[0])}</span>
+      <span class="wmeta">${timeAgo(i.lastWorn)}</span></button>`).join("");
+  }
+  const gaps = ws.length ? wardrobeGaps() : [];
+  $("#wardStatus").innerHTML = !ws.length ? "Photos stay on this device. Nothing is uploaded."
+    : gaps.length ? `<b style="color:var(--ink)">Missing for today's weather:</b> ${gaps.map(([l,s]) => `${esc(l)} (try: ${esc(s)})`).join(", ")}. <button type="button" class="linkbtn" data-gotobrands>Find stores nearby</button>`
+    : "You have everything you need for today's weather. Photos stay on this device.";
+}
+$("#wardStatus").addEventListener("click", e => { if(e.target.closest("[data-gotobrands]")) document.querySelector(".brandbox").scrollIntoView({ behavior:"smooth", block:"start" }); });
+async function reloadWardrobe(){
+  try{ state.wardrobe = await wdb.all() || []; }catch{ state.wardrobe = []; $("#wardStatus").textContent = "This browser blocks on-device storage (private mode?), so the wardrobe can't be saved."; }
+  renderWardrobe(); renderLooks();
+}
+document.addEventListener("click", async e => {
+  const w = e.target.closest("[data-wore]"); if(!w) return;
+  const l = state.looks[+w.dataset.wore]; if(!l?.itemIds) return;
+  const now = Date.now();
+  for(const id of l.itemIds){ const it = state.wardrobe.find(x => x.id===id); if(it){ it.lastWorn = now; await wdb.put(it); } }
+  renderWardrobe(); toast("Marked as worn today. Tomorrow's picks will mix it up.");
+});
+
+
+/* ================= AI stylist chat =================
+   Calls Claude straight from the browser with the user's own API key, which is stored only on this device.
+   The SDK loads lazily from jsDelivr the first time it's needed. */
+const AI_MODEL = "claude-opus-5-5";
+const SDK_URL = "https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@0.137.0/+esm";
+const STYLIST_SYSTEM = `You are Stylecast's personal stylist: warm, direct and practical. You help one person dress well for their real weather, season, location, occasion and budget, using the clothes they already own wherever possible.
+
+How to answer:
+- Lead with the answer. A specific outfit beats general advice: name the pieces, colours and shoes.
+- When their wardrobe is listed, build from it first and refer to items by their names. Say plainly what's missing and suggest one or two concrete pieces to buy, naming stores from their list where it fits.
+- Respect local and cultural dress (traditional wear, modesty norms, event customs such as aso-ebi) and their chosen style. Never comment on body size unless asked; when asked, be kind and practical.
+- Keep it short: a few lines or a tight list. Use **bold** for piece names and "-" for lists. No tables.
+- If they share a photo, describe what you see briefly and give honest, kind feedback with one or two fixes.
+- You can't see live stock or prices. If asked, say so and point them to the store's site or the app's "Check stock" link.
+
+Each user message may start with a "Context" block that the app adds automatically: location, today's weather, season, preferences, wardrobe and nearby stores. Treat it as current facts. Don't repeat it back.`;
+
+state.chat = store.get("chat", []);          // [{role, content}] exactly as sent/received (append-only)
+state.chatLastCtx = store.get("chatCtx", "");
+state.chatImage = null;                      // {data, media_type, url}
+let aiClientPromise = null, AnthropicNS = null, chatAbort = null;
+
+const getKey = () => { try{ return localStorage.getItem("stylecast:apiKey") || ""; }catch{ return ""; } };
+function setKey(k){ try{ k ? localStorage.setItem("stylecast:apiKey", k) : localStorage.removeItem("stylecast:apiKey"); }catch{} aiClientPromise = null; }
+async function aiClient(){
+  const key = getKey(); if(!key) throw Object.assign(new Error("no key"), { code:"nokey" });
+  if(!aiClientPromise) aiClientPromise = import(SDK_URL).then(mod => {
+    AnthropicNS = mod.default;
+    return new AnthropicNS({ apiKey: key, dangerouslyAllowBrowser: true, maxRetries: 2 });
+  }).catch(e => { aiClientPromise = null; throw Object.assign(e, { code:"sdk" }); });
+  return aiClientPromise;
+}
+function aiErrorText(e){
+  if(e.code==="nokey") return "Add your Anthropic API key first (the key icon above the chat).";
+  if(e.code==="sdk") return "Couldn't load the Claude library. Check your internet connection and try again.";
+  const A = AnthropicNS;
+  if(A){
+    if(e instanceof A.AuthenticationError) return "Your API key was rejected. Check it in the key settings and try again.";
+    if(e instanceof A.PermissionDeniedError) return "This API key doesn't have access to that model. Check your Anthropic Console settings.";
+    if(e instanceof A.RateLimitError) return "Too many requests right now. Wait a minute, then try again.";
+    if(e instanceof A.BadRequestError) return /credit|billing|balance/i.test(e.message) ? "Your Anthropic account is out of credit. Add credit in the Anthropic Console, then try again." : "The request was rejected: " + e.message;
+    if(e instanceof A.APIConnectionError) return "Couldn't reach Claude. Check your internet connection and try again.";
+    if(e instanceof A.APIError) return `Claude is having trouble (error ${e.status ?? "?"}). Try again in a moment.`;
+  }
+  if(e.name==="AbortError" || /abort/i.test(e.message||"")) return null;
+  return "Something went wrong: " + (e.message || e);
+}
+
+/* --- context the stylist sees: rebuilt each turn, only re-sent when it changes --- */
+function chatContext(){
+  const p = state.place, w = state.weather, lines = [];
+  if(p) lines.push(`Location: ${p.name}${p.country ? ", "+p.country : ""}${p.example ? " (example city, not necessarily where they are)" : ""}`);
+  lines.push(`Date: ${new Date().toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}`);
+  if(w && p){
+    const c = w.current, d = w.daily, s = season(p.lat, p.cc, w);
+    lines.push(`Weather now: ${Math.round(c.temperature_2m)}°C (feels ${Math.round(c.apparent_temperature)}°C), ${WMO(c.weather_code)[0].toLowerCase()}, wind ${Math.round(c.wind_speed_10m)} km/h, humidity ${c.relative_humidity_2m}%`);
+    lines.push(`Today: high ${Math.round(d.temperature_2m_max[0])}°C, low ${Math.round(d.temperature_2m_min[0])}°C, rain chance ${d.precipitation_probability_max[0] ?? 0}%, UV ${Math.round(d.uv_index_max[0] ?? 0)}`);
+    lines.push("Next days: " + d.time.slice(1).map((t,i) => `${new Date(t+"T12:00").toLocaleDateString("en-GB",{weekday:"short"})} ${Math.round(d.temperature_2m_min[i+1])}–${Math.round(d.temperature_2m_max[i+1])}°C ${WMO(d.weather_code[i+1])[0].toLowerCase()}`).join("; "));
+    lines.push(`Season: ${s.name}`);
+  }
+  lines.push(`Preferences: wears ${OPTIONS.wear.find(o=>o[0]===state.wear)[1].toLowerCase()}; occasion ${OPTIONS.occasion.find(o=>o[0]===state.occasion)[1].toLowerCase()}; vibe ${state.vibe}; temperature unit °${state.unit}`);
+  const ws = state.wardrobe || [];
+  if(ws.length){
+    lines.push(`Wardrobe (${ws.length} items):`);
+    for(const i of ws) lines.push(`- ${i.name} | ${W_CAT_LABEL[i.cat]} | ${i.colorName} | warmth ${i.warmth} | ${i.styles.map(s=>W_STYLES.find(x=>x[0]===s)[1].toLowerCase()).join("/")} | ${timeAgo(i.lastWorn).toLowerCase()}`);
+  } else lines.push("Wardrobe: not added yet.");
+  if(state.selBrands?.length) lines.push(`Favourite stores: ${state.selBrands.join(", ")}`);
+  const near = (state.view==="brand" ? state.brandShops : state.shops).slice(0,8);
+  if(near.length) lines.push("Nearby stores: " + near.map(s => `${s.name} (${s.brandName || TYPE_LABEL[s.type]}, ${s.dist<1 ? Math.round(s.dist*1000)+" m" : s.dist.toFixed(1)+" km"})`).join("; "));
+  return lines.join("\n");
+}
+
+/* --- tiny, safe markdown: escape first, then bold / italics / lists / paragraphs --- */
+function md(text){
+  const inline = s => esc(s).replace(/\*\*(.+?)\*\*/g,"<strong>$1</strong>").replace(/(^|[^*])\*(?!\s)(.+?)\*(?!\*)/g,"$1<em>$2</em>");
+  const out = []; let list = null;
+  for(const raw of text.split("\n")){
+    const line = raw.trimEnd(), m = line.match(/^\s*(?:[-*•]|\d+[.)])\s+(.*)$/), h = line.match(/^#{1,4}\s+(.*)$/);
+    if(m){ if(!list){ list = []; } list.push(`<li>${inline(m[1])}</li>`); continue; }
+    if(list){ out.push(`<ul>${list.join("")}</ul>`); list = null; }
+    if(h) out.push(`<p><strong>${inline(h[1])}</strong></p>`);
+    else if(line.trim()) out.push(`<p>${inline(line)}</p>`);
+  }
+  if(list) out.push(`<ul>${list.join("")}</ul>`);
+  return out.join("");
+}
+const textOf = content => typeof content === "string" ? content : content.filter(b => b.type==="text").map(b => b.text).join("");
+const userVisible = content => typeof content === "string" ? content : content.filter(b => b.type==="text" && !b.text.startsWith("Context (added by the app)")).map(b=>b.text).join("");
+
+function renderChat(){
+  const log = $("#chatLog"), hasKey = !!getKey();
+  $("#chatKeyState").textContent = hasKey ? "Key saved on this device" : "No API key yet";
+  $("#chatKeyBox").hidden = hasKey && !state.showKeyBox;
+  if(!state.chat.length){
+    log.innerHTML = `<div class="bubble ai"><p>Hi! I'm your stylist. I can see today's weather${state.wardrobe?.length ? `, your ${state.wardrobe.length} wardrobe items` : ""} and the stores near you. Ask me what to wear, how to style a piece, what to pack, or send a photo of an outfit for feedback.</p>${hasKey ? "" : `<p class="muted">To start, add your Anthropic API key below.</p>`}</div>`;
+  } else {
+    log.innerHTML = state.chat.map(m => {
+      if(m.role==="user"){
+        const img = Array.isArray(m.content) && m.content.find(b => b.type==="image");
+        return `<div class="bubble me">${img ? `<img src="data:${img.source.media_type};base64,${img.source.data}" alt="Photo you sent">` : ""}${md(userVisible(m.content) || "(photo)")}</div>`;
+      }
+      return `<div class="bubble ai">${md(textOf(m.content)) || `<p class="muted">(no text)</p>`}</div>`;
+    }).join("");
+  }
+  log.scrollTop = log.scrollHeight;
+  $("#chatClear").hidden = !state.chat.length;
+  $("#chatLong").hidden = state.chat.length < 40;
+}
+function persistChat(){
+  // History is saved exactly as sent (never trimmed or edited), because Claude expects earlier turns unchanged.
+  // If photos fill up storage, the chat still works for this visit but won't be restored next time.
+  try{ localStorage.setItem("stylecast:chat", JSON.stringify(state.chat)); localStorage.setItem("stylecast:chatCtx", JSON.stringify(state.chatLastCtx)); }
+  catch{ try{ localStorage.removeItem("stylecast:chat"); localStorage.removeItem("stylecast:chatCtx"); }catch{} }
+}
+async function sendChat(text){
+  text = text.trim();
+  if(!text && !state.chatImage) return;
+  if(!getKey()){ state.showKeyBox = true; renderChat(); $("#apiKey").focus(); toast("Add your Anthropic API key to chat."); return; }
+  const content = [];
+  const ctx = chatContext();
+  if(ctx !== state.chatLastCtx || !state.chat.length){ content.push({ type:"text", text: "Context (added by the app):\n" + ctx }); state.chatLastCtx = ctx; }
+  if(state.chatImage) content.push({ type:"image", source:{ type:"base64", media_type: state.chatImage.media_type, data: state.chatImage.data } });
+  content.push({ type:"text", text: text || "What do you think of this?" });
+  state.chat.push({ role:"user", content });
+  state.chatImage = null; renderAttach();
+  $("#chatInput").value = ""; renderChat();
+
+  const log = $("#chatLog");
+  const bubble = document.createElement("div"); bubble.className = "bubble ai"; bubble.innerHTML = `<p class="muted typing">Thinking<span>.</span><span>.</span><span>.</span></p>`;
+  log.appendChild(bubble); log.scrollTop = log.scrollHeight;
+  setChatBusy(true);
+  let streamed = "";
+  try{
+    const client = await aiClient();
+    chatAbort = new AbortController();
+    const stream = client.beta.messages.stream({
+      model: AI_MODEL,
+      max_tokens: 16000,
+      system: STYLIST_SYSTEM,
+      output_config: { effort: "medium" },
+      betas: ["server-side-fallback-2026-07-01"],
+      fallbacks: "default",
+      messages: state.chat,
+    }, { signal: chatAbort.signal });
+    stream.on("text", delta => { streamed += delta; bubble.innerHTML = md(streamed); log.scrollTop = log.scrollHeight; });
+    const msg = await stream.finalMessage();
+    if(msg.stop_reason === "refusal"){
+      state.chat.pop();                     // drop the declined turn so the conversation stays valid
+      bubble.innerHTML = `<p class="muted">I can't help with that one. Try asking about outfits, styling, shopping or packing.</p>`;
+    } else {
+      state.chat.push({ role:"assistant", content: msg.content });   // full content, unchanged
+      bubble.innerHTML = md(textOf(msg.content)) + (msg.stop_reason==="max_tokens" ? `<p class="muted">(Reply cut short.)</p>` : "");
+    }
+  }catch(e){
+    state.chat.pop();
+    const t = aiErrorText(e);
+    bubble.innerHTML = t ? `<p class="err-text">${esc(t)}</p>` : (streamed ? md(streamed) + `<p class="muted">(Stopped.)</p>` : `<p class="muted">(Stopped.)</p>`);
+    if(e.code==="nokey" || (AnthropicNS && e instanceof AnthropicNS.AuthenticationError)){ state.showKeyBox = true; $("#chatKeyBox").hidden = false; }
+    if(!t) {} else { $("#chatInput").value = text; }
+  }finally{
+    chatAbort = null; setChatBusy(false); persistChat(); $("#chatClear").hidden = !state.chat.length;
+  }
+}
+function setChatBusy(b){
+  $("#chatSend").hidden = b; $("#chatStop").hidden = !b;
+  $("#chatInput").disabled = b; document.querySelectorAll("#chatChips button").forEach(x => x.disabled = b);
+}
+function renderAttach(){
+  const a = state.chatImage;
+  $("#chatAttachPreview").hidden = !a;
+  if(a) $("#chatAttachPreview").innerHTML = `<img src="data:${a.media_type};base64,${a.data}" alt="Photo to send"><button type="button" class="linkbtn" id="chatAttachRemove">Remove photo</button>`;
+}
+$("#chatForm").addEventListener("submit", e => { e.preventDefault(); sendChat($("#chatInput").value); });
+$("#chatInput").addEventListener("keydown", e => { if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); sendChat($("#chatInput").value); } });
+$("#chatStop").onclick = () => chatAbort?.abort();
+$("#chatChips").onclick = e => { const b = e.target.closest("button"); if(!b) return;
+  if(b.dataset.photo){ $("#chatPhoto").click(); return; }
+  sendChat(b.textContent); };
+$("#chatClear").onclick = () => {
+  const b = $("#chatClear");
+  if(b.dataset.confirm !== "1"){ b.dataset.confirm = "1"; b.textContent = "Tap again to clear"; setTimeout(()=>{ b.dataset.confirm=""; b.textContent="New chat"; }, 3000); return; }
+  b.dataset.confirm = ""; b.textContent = "New chat";
+  state.chat = []; state.chatLastCtx = ""; persistChat(); renderChat();
+};
+$("#chatPhoto").addEventListener("change", async e => {
+  const f = e.target.files[0]; e.target.value = ""; if(!f) return;
+  try{
+    const im = await loadImage(f), scale = Math.min(1, 1280 / Math.max(im.width, im.height));
+    const cv = document.createElement("canvas"); cv.width = Math.round(im.width*scale); cv.height = Math.round(im.height*scale);
+    cv.getContext("2d").drawImage(im, 0, 0, cv.width, cv.height);
+    state.chatImage = { media_type:"image/jpeg", data: cv.toDataURL("image/jpeg", 0.85).split(",")[1] };
+    renderAttach(); $("#chatInput").focus();
+  }catch{ toast("Couldn't read that photo. Try a JPEG or PNG."); }
+});
+$("#chatAttachPreview").addEventListener("click", e => { if(e.target.id==="chatAttachRemove"){ state.chatImage = null; renderAttach(); } });
+$("#keyToggle").onclick = () => { state.showKeyBox = !state.showKeyBox || $("#chatKeyBox").hidden; renderChat(); if(!$("#chatKeyBox").hidden) $("#apiKey").focus(); };
+$("#keyForm").addEventListener("submit", e => {
+  e.preventDefault(); const k = $("#apiKey").value.trim();
+  if(!/^sk-ant-/.test(k)){ toast("That doesn't look like an Anthropic API key. It starts with sk-ant-."); return; }
+  setKey(k); $("#apiKey").value = ""; state.showKeyBox = false; renderChat(); renderWardrobeAI(); toast("API key saved on this device");
+});
+$("#keyRemove").onclick = () => { setKey(""); state.showKeyBox = true; renderChat(); renderWardrobeAI(); toast("API key removed"); };
+if("IntersectionObserver" in window) new IntersectionObserver(([en]) => { $("#askFab").hidden = en.isIntersecting; }, { threshold: 0.05 }).observe($("#stylist"));
+$("#askFab").addEventListener("click", () => setTimeout(() => $("#chatInput").focus({ preventScroll:true }), 400));
+$("#keyShow").onclick = () => { const i = $("#apiKey"); i.type = i.type==="password" ? "text" : "password"; $("#keyShow").textContent = i.type==="password" ? "Show" : "Hide"; };
+
+/* --- AI auto-tagging in the wardrobe dialog --- */
+const TAG_SCHEMA = {
+  type:"object", additionalProperties:false,
+  required:["name","category","warmth","styles","main_color_hex"],
+  properties:{
+    name:{ type:"string", description:"Short everyday name, e.g. 'Navy linen shirt'" },
+    category:{ type:"string", enum: W_CATS.map(c=>c[0]) },
+    warmth:{ type:"string", enum: W_WARMTH.map(w=>w[0]), description:"light = hot days, medium = mild, warm = cold days, all = any weather (shoes/accessories)" },
+    styles:{ type:"array", items:{ type:"string", enum: W_STYLES.map(s=>s[0]) }, description:"c casual, s smart, f formal, a sport, x street" },
+    main_color_hex:{ type:"string", description:"Main colour of the garment itself (not the background), as #rrggbb" }
+  }
+};
+function renderWardrobeAI(){ const b = $("#dlgAI"); if(b) b.hidden = !getKey(); }
+$("#dlgAI").onclick = async () => {
+  const it = state.editing || state.pending[0]; if(!it) return;
+  const d = state.editing ? it : it.draft;
+  const btn = $("#dlgAI"); btn.disabled = true; btn.textContent = "Looking…";
+  try{
+    const client = await aiClient();
+    const msg = await client.messages.create({
+      model: AI_MODEL, max_tokens: 2000, output_config: { effort: "low", format: { type:"json_schema", schema: TAG_SCHEMA } },
+      messages: [{ role:"user", content: [
+        { type:"image", source:{ type:"base64", media_type:"image/jpeg", data: it.img.split(",")[1] } },
+        { type:"text", text:"Tag this clothing item for a wardrobe app. If several items are visible, tag the most prominent one." }
+      ]}]
+    });
+    if(msg.stop_reason === "refusal") throw new Error("Claude couldn't tag this photo.");
+    const j = JSON.parse(textOf(msg.content));
+    d.name = j.name; d.cat = j.category; d.warmth = j.warmth; d.warmTouched = true;
+    if(j.styles?.length) d.styles = j.styles;
+    if(/^#[0-9a-f]{6}$/i.test(j.main_color_hex)) d.color = j.main_color_hex.toLowerCase();
+    openEditor(); toast("Tagged. Check it and tap Save.");
+  }catch(e){ toast(aiErrorText(e) || "Couldn't tag this photo."); }
+  finally{ btn.disabled = false; btn.textContent = "✦ Auto-tag with AI"; }
+};
+
+/* ================= boot ================= */
+$("#unitBtn").textContent = "°"+state.unit;
+renderControls(); renderSaved(); initMap(); renderShops(); renderBrands(); reloadWardrobe(); renderChat(); renderWardrobeAI();
+const savedPlace = store.get("place", null);
+if(savedPlace) setPlace(savedPlace);
+else setPlace({ name:"Paris", country:"France", cc:"FR", lat:48.8566, lon:2.3522, example:true });
+</script>
+</body>
+</html>

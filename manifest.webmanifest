@@ -1,0 +1,15 @@
+{
+  "name": "Stylecast",
+  "short_name": "Stylecast",
+  "description": "Outfit suggestions for your weather, season and local style, plus stores near you.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#1d1a2b",
+  "theme_color": "#1d1a2b",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
